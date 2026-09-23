@@ -1,0 +1,3252 @@
+{
+  "modelType": "logistic-regression",
+  "modelVersion": "fraud-lr-1.1.0",
+  "synthetic": true,
+  "notice": "Prototype model trained only on synthetic data. Its metrics describe the synthetic generator, not real-world fraud detection performance. Not connected to the fraud.auth UI.",
+  "target": "isFraud (synthetic ground truth): probability that a pending standing-order request is fraud",
+  "dataset": {
+    "source": "generateDataset() default config (same as npm run data:generate)",
+    "generatorVersion": "2.0.0",
+    "seed": "fraud-auth-stage2",
+    "records": 2000,
+    "users": 200,
+    "fraudRate": 0.1235,
+    "sha256": "9b4fedf17a6c64c42755388cbc7adc09b96228952ee609f345a373a0a9e7d56b"
+  },
+  "training": {
+    "seed": "fraud-auth-stage3",
+    "split": "user",
+    "fractions": {
+      "train": 0.6,
+      "validation": 0.2,
+      "test": 0.2
+    },
+    "sizes": {
+      "train": {
+        "records": 1212,
+        "fraud": 149,
+        "users": 120
+      },
+      "validation": {
+        "records": 384,
+        "fraud": 50,
+        "users": 40
+      },
+      "test": {
+        "records": 404,
+        "fraud": 48,
+        "users": 40
+      }
+    },
+    "classWeighting": "none (probabilities stay on the training prevalence; imbalance is handled by the threshold)",
+    "l2Search": [
+      {
+        "l2": 0.0001,
+        "iterations": 10,
+        "converged": true,
+        "validation": {
+          "rocAuc": 0.9702,
+          "averagePrecision": 0.8561,
+          "logLoss": 0.1464,
+          "brierScore": 0.0478
+        }
+      },
+      {
+        "l2": 0.0003,
+        "iterations": 9,
+        "converged": true,
+        "validation": {
+          "rocAuc": 0.9703,
+          "averagePrecision": 0.8569,
+          "logLoss": 0.1417,
+          "brierScore": 0.0465
+        }
+      },
+      {
+        "l2": 0.001,
+        "iterations": 8,
+        "converged": true,
+        "validation": {
+          "rocAuc": 0.9687,
+          "averagePrecision": 0.8512,
+          "logLoss": 0.1417,
+          "brierScore": 0.0459
+        }
+      },
+      {
+        "l2": 0.003,
+        "iterations": 8,
+        "converged": true,
+        "validation": {
+          "rocAuc": 0.9674,
+          "averagePrecision": 0.8459,
+          "logLoss": 0.1457,
+          "brierScore": 0.047
+        }
+      },
+      {
+        "l2": 0.01,
+        "iterations": 7,
+        "converged": true,
+        "validation": {
+          "rocAuc": 0.9661,
+          "averagePrecision": 0.8326,
+          "logLoss": 0.1502,
+          "brierScore": 0.0486
+        }
+      },
+      {
+        "l2": 0.03,
+        "iterations": 6,
+        "converged": true,
+        "validation": {
+          "rocAuc": 0.9675,
+          "averagePrecision": 0.8335,
+          "logLoss": 0.1556,
+          "brierScore": 0.0493
+        }
+      },
+      {
+        "l2": 0.1,
+        "iterations": 6,
+        "converged": true,
+        "validation": {
+          "rocAuc": 0.9701,
+          "averagePrecision": 0.8389,
+          "logLoss": 0.17,
+          "brierScore": 0.0508
+        }
+      },
+      {
+        "l2": 0.3,
+        "iterations": 5,
+        "converged": true,
+        "validation": {
+          "rocAuc": 0.9713,
+          "averagePrecision": 0.8435,
+          "logLoss": 0.2001,
+          "brierScore": 0.0571
+        }
+      },
+      {
+        "l2": 1,
+        "iterations": 4,
+        "converged": true,
+        "validation": {
+          "rocAuc": 0.9684,
+          "averagePrecision": 0.8419,
+          "logLoss": 0.2572,
+          "brierScore": 0.0749
+        }
+      }
+    ],
+    "selectedL2": 0.001,
+    "iterations": 8,
+    "converged": true
+  },
+  "features": [
+    {
+      "source": "raw",
+      "name": "frequency",
+      "kind": "category"
+    },
+    {
+      "source": "raw",
+      "name": "recipientBank",
+      "kind": "category"
+    },
+    {
+      "source": "raw",
+      "name": "channel",
+      "kind": "category"
+    },
+    {
+      "source": "raw",
+      "name": "initiatedHour",
+      "kind": "cyclic"
+    },
+    {
+      "source": "raw",
+      "name": "beneficiaryAddedMinutesBefore",
+      "kind": "numeric",
+      "transform": "log1p"
+    },
+    {
+      "source": "raw",
+      "name": "userAverageAmount",
+      "kind": "numeric",
+      "transform": "log1p"
+    },
+    {
+      "source": "raw",
+      "name": "userStandingOrderCount",
+      "kind": "numeric"
+    },
+    {
+      "source": "raw",
+      "name": "userStandingOrderMinAmount",
+      "kind": "numeric",
+      "transform": "log1p"
+    },
+    {
+      "source": "raw",
+      "name": "userStandingOrderMaxAmount",
+      "kind": "numeric",
+      "transform": "log1p"
+    },
+    {
+      "source": "raw",
+      "name": "userKnownDeviceCount",
+      "kind": "numeric"
+    },
+    {
+      "source": "raw",
+      "name": "userUsualChannel",
+      "kind": "category"
+    },
+    {
+      "source": "raw",
+      "name": "recipientPreviousPaymentCount",
+      "kind": "numeric",
+      "transform": "log1p"
+    },
+    {
+      "source": "raw",
+      "name": "recipientHistoricalAverageAmount",
+      "kind": "numeric",
+      "transform": "log1p"
+    },
+    {
+      "source": "raw",
+      "name": "recipientLastPaidDaysAgo",
+      "kind": "numeric",
+      "transform": "log1p"
+    },
+    {
+      "source": "raw",
+      "name": "recipientAccountPreviouslyUsed",
+      "kind": "category"
+    },
+    {
+      "source": "raw",
+      "name": "existingStandingOrderToRecipient",
+      "kind": "boolean"
+    },
+    {
+      "source": "raw",
+      "name": "existingStandingOrderAmount",
+      "kind": "numeric",
+      "transform": "log1p"
+    },
+    {
+      "source": "raw",
+      "name": "existingStandingOrderFrequency",
+      "kind": "category"
+    },
+    {
+      "source": "derived",
+      "name": "amountLog10",
+      "kind": "numeric"
+    },
+    {
+      "source": "derived",
+      "name": "amountToUserAverageRatio",
+      "kind": "numeric",
+      "transform": "log"
+    },
+    {
+      "source": "derived",
+      "name": "amountToStandingOrderMaxRatio",
+      "kind": "numeric",
+      "transform": "log"
+    },
+    {
+      "source": "derived",
+      "name": "amountLogZScore",
+      "kind": "numeric"
+    },
+    {
+      "source": "derived",
+      "name": "amountToRecipientAverageRatio",
+      "kind": "numeric",
+      "transform": "log"
+    },
+    {
+      "source": "derived",
+      "name": "amountChangeVsExistingOrderRatio",
+      "kind": "numeric",
+      "transform": "log"
+    },
+    {
+      "source": "derived",
+      "name": "amountAboveUsualRange",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "roundThousandAmount",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "annualisedAmount",
+      "kind": "numeric",
+      "transform": "log1p"
+    },
+    {
+      "source": "derived",
+      "name": "annualisedToUsualRatio",
+      "kind": "numeric",
+      "transform": "log"
+    },
+    {
+      "source": "derived",
+      "name": "unusualFrequency",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "frequencyChangedForRecipient",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "duplicateOfExistingOrder",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "unusualPaymentDay",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "newRecipient",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "recipientAccountChanged",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "recipientNameSimilarity",
+      "kind": "numeric"
+    },
+    {
+      "source": "derived",
+      "name": "lookalikeRecipient",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "securityThemedRecipientName",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "overseasRecipient",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "beneficiaryAddedRecently",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "unusualHour",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "hoursOutsideActiveWindow",
+      "kind": "numeric"
+    },
+    {
+      "source": "derived",
+      "name": "nightTime",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "hourTypicality",
+      "kind": "numeric"
+    },
+    {
+      "source": "derived",
+      "name": "weekendInitiation",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "newDevice",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "unusualChannel",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "externalLinkChannel",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "textLength",
+      "kind": "numeric",
+      "transform": "log1p"
+    },
+    {
+      "source": "derived",
+      "name": "textUrgency",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "textThreat",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "textBypassChecks",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "textExternalLink",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "textSensitiveInfo",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "textBankImpersonation",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "textChangedPaymentDetails",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "textPromisedReturns",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "textRiskTermCount",
+      "kind": "numeric"
+    },
+    {
+      "source": "derived",
+      "name": "payeeCategory",
+      "kind": "category"
+    },
+    {
+      "source": "derived",
+      "name": "referenceCategory",
+      "kind": "category"
+    },
+    {
+      "source": "derived",
+      "name": "referencePayeeConflict",
+      "kind": "boolean"
+    },
+    {
+      "source": "derived",
+      "name": "riskSignalCount",
+      "kind": "numeric"
+    }
+  ],
+  "model": {
+    "preprocessing": {
+      "version": 1,
+      "clip": 5,
+      "features": [
+        {
+          "source": "raw",
+          "name": "frequency",
+          "kind": "category",
+          "levels": [
+            "DAILY",
+            "MONTHLY",
+            "ONE_OFF",
+            "WEEKLY"
+          ]
+        },
+        {
+          "source": "raw",
+          "name": "recipientBank",
+          "kind": "category",
+          "levels": [
+            "OTHER_LOCAL_BANK",
+            "OVERSEAS_BANK",
+            "SAME_BANK",
+            "__missing__"
+          ]
+        },
+        {
+          "source": "raw",
+          "name": "channel",
+          "kind": "category",
+          "levels": [
+            "BRANCH",
+            "EMAIL_LINK",
+            "MOBILE_APP",
+            "ONLINE_BANKING",
+            "__missing__"
+          ]
+        },
+        {
+          "source": "raw",
+          "name": "initiatedHour",
+          "kind": "cyclic",
+          "period": 24
+        },
+        {
+          "source": "raw",
+          "name": "beneficiaryAddedMinutesBefore",
+          "kind": "numeric",
+          "transform": "log1p",
+          "median": 8.10851893,
+          "mean": 7.94703356,
+          "sd": 1.82863549,
+          "missingIndicator": true
+        },
+        {
+          "source": "raw",
+          "name": "userAverageAmount",
+          "kind": "numeric",
+          "transform": "log1p",
+          "median": 7.94494242,
+          "mean": 7.94183076,
+          "sd": 0.45775417,
+          "missingIndicator": true
+        },
+        {
+          "source": "raw",
+          "name": "userStandingOrderCount",
+          "kind": "numeric",
+          "transform": null,
+          "median": 3,
+          "mean": 3.75165017,
+          "sd": 1.4037452,
+          "missingIndicator": false
+        },
+        {
+          "source": "raw",
+          "name": "userStandingOrderMinAmount",
+          "kind": "numeric",
+          "transform": "log1p",
+          "median": 7.46794233,
+          "mean": 7.41427147,
+          "sd": 0.70402887,
+          "missingIndicator": true
+        },
+        {
+          "source": "raw",
+          "name": "userStandingOrderMaxAmount",
+          "kind": "numeric",
+          "transform": "log1p",
+          "median": 9.34145635,
+          "mean": 9.27533424,
+          "sd": 0.85216474,
+          "missingIndicator": true
+        },
+        {
+          "source": "raw",
+          "name": "userKnownDeviceCount",
+          "kind": "numeric",
+          "transform": null,
+          "median": 2,
+          "mean": 1.99092409,
+          "sd": 0.73508276,
+          "missingIndicator": false
+        },
+        {
+          "source": "raw",
+          "name": "userUsualChannel",
+          "kind": "category",
+          "levels": [
+            "BRANCH",
+            "EMAIL_LINK",
+            "MOBILE_APP",
+            "ONLINE_BANKING",
+            "__missing__"
+          ]
+        },
+        {
+          "source": "raw",
+          "name": "recipientPreviousPaymentCount",
+          "kind": "numeric",
+          "transform": "log1p",
+          "median": 1.79175947,
+          "mean": 1.17822492,
+          "sd": 1.0504713,
+          "missingIndicator": false
+        },
+        {
+          "source": "raw",
+          "name": "recipientHistoricalAverageAmount",
+          "kind": "numeric",
+          "transform": "log1p",
+          "median": 8.29429961,
+          "mean": 8.30672777,
+          "sd": 0.76867323,
+          "missingIndicator": true
+        },
+        {
+          "source": "raw",
+          "name": "recipientLastPaidDaysAgo",
+          "kind": "numeric",
+          "transform": "log1p",
+          "median": 3.45315712,
+          "mean": 3.40781264,
+          "sd": 0.42003696,
+          "missingIndicator": true
+        },
+        {
+          "source": "raw",
+          "name": "recipientAccountPreviouslyUsed",
+          "kind": "category",
+          "levels": [
+            "__missing__",
+            "false",
+            "true"
+          ]
+        },
+        {
+          "source": "raw",
+          "name": "existingStandingOrderToRecipient",
+          "kind": "boolean"
+        },
+        {
+          "source": "raw",
+          "name": "existingStandingOrderAmount",
+          "kind": "numeric",
+          "transform": "log1p",
+          "median": 8.29429961,
+          "mean": 8.30345379,
+          "sd": 0.67409732,
+          "missingIndicator": true
+        },
+        {
+          "source": "raw",
+          "name": "existingStandingOrderFrequency",
+          "kind": "category",
+          "levels": [
+            "DAILY",
+            "MONTHLY",
+            "ONE_OFF",
+            "WEEKLY",
+            "__missing__"
+          ]
+        },
+        {
+          "source": "derived",
+          "name": "amountLog10",
+          "kind": "numeric",
+          "transform": null,
+          "median": 3.6744,
+          "mean": 3.71655429,
+          "sd": 0.55517616,
+          "missingIndicator": false
+        },
+        {
+          "source": "derived",
+          "name": "amountToUserAverageRatio",
+          "kind": "numeric",
+          "transform": "log",
+          "median": 0.52717753,
+          "mean": 0.61624575,
+          "sd": 1.21536571,
+          "missingIndicator": true
+        },
+        {
+          "source": "derived",
+          "name": "amountToStandingOrderMaxRatio",
+          "kind": "numeric",
+          "transform": "log",
+          "median": -0.68260492,
+          "mean": -0.71750428,
+          "sd": 1.2423107,
+          "missingIndicator": true
+        },
+        {
+          "source": "derived",
+          "name": "amountLogZScore",
+          "kind": "numeric",
+          "transform": null,
+          "median": 1.0052,
+          "mean": 1.10591914,
+          "sd": 0.96375705,
+          "missingIndicator": true
+        },
+        {
+          "source": "derived",
+          "name": "amountToRecipientAverageRatio",
+          "kind": "numeric",
+          "transform": "log",
+          "median": 0.02249502,
+          "mean": 0.04821662,
+          "sd": 0.37623161,
+          "missingIndicator": true
+        },
+        {
+          "source": "derived",
+          "name": "amountChangeVsExistingOrderRatio",
+          "kind": "numeric",
+          "transform": "log",
+          "median": 0.0235212,
+          "mean": 0.03260274,
+          "sd": 0.31697672,
+          "missingIndicator": true
+        },
+        {
+          "source": "derived",
+          "name": "amountAboveUsualRange",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "roundThousandAmount",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "annualisedAmount",
+          "kind": "numeric",
+          "transform": "log1p",
+          "median": 10.98191414,
+          "mean": 11.14998776,
+          "sd": 1.37679042,
+          "missingIndicator": false
+        },
+        {
+          "source": "derived",
+          "name": "annualisedToUsualRatio",
+          "kind": "numeric",
+          "transform": "log",
+          "median": -0.65219719,
+          "mean": -0.61013806,
+          "sd": 1.31040362,
+          "missingIndicator": true
+        },
+        {
+          "source": "derived",
+          "name": "unusualFrequency",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "frequencyChangedForRecipient",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "duplicateOfExistingOrder",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "unusualPaymentDay",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "newRecipient",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "recipientAccountChanged",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "recipientNameSimilarity",
+          "kind": "numeric",
+          "transform": null,
+          "median": 0.37,
+          "mean": 0.42843069,
+          "sd": 0.16488153,
+          "missingIndicator": false
+        },
+        {
+          "source": "derived",
+          "name": "lookalikeRecipient",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "securityThemedRecipientName",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "overseasRecipient",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "beneficiaryAddedRecently",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "unusualHour",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "hoursOutsideActiveWindow",
+          "kind": "numeric",
+          "transform": null,
+          "median": 0,
+          "mean": 0.21452145,
+          "sd": 0.72224463,
+          "missingIndicator": false
+        },
+        {
+          "source": "derived",
+          "name": "nightTime",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "hourTypicality",
+          "kind": "numeric",
+          "transform": null,
+          "median": 0.193,
+          "mean": 0.18228795,
+          "sd": 0.07962939,
+          "missingIndicator": true
+        },
+        {
+          "source": "derived",
+          "name": "weekendInitiation",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "newDevice",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "unusualChannel",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "externalLinkChannel",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "textLength",
+          "kind": "numeric",
+          "transform": "log1p",
+          "median": 3.80666249,
+          "mean": 2.90595906,
+          "sd": 1.81035665,
+          "missingIndicator": false
+        },
+        {
+          "source": "derived",
+          "name": "textUrgency",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "textThreat",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "textBypassChecks",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "textExternalLink",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "textSensitiveInfo",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "textBankImpersonation",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "textChangedPaymentDetails",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "textPromisedReturns",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "textRiskTermCount",
+          "kind": "numeric",
+          "transform": null,
+          "median": 0,
+          "mean": 0.1509901,
+          "sd": 0.50359173,
+          "missingIndicator": false
+        },
+        {
+          "source": "derived",
+          "name": "payeeCategory",
+          "kind": "category",
+          "levels": [
+            "CHARITY",
+            "CHILDCARE",
+            "EDUCATION",
+            "FAMILY",
+            "FITNESS",
+            "INSURANCE",
+            "INVESTMENT",
+            "LOAN",
+            "PROPERTY",
+            "RENT",
+            "SAVINGS",
+            "SECURITY",
+            "SERVICES",
+            "TELECOM",
+            "UTILITIES",
+            "__missing__"
+          ]
+        },
+        {
+          "source": "derived",
+          "name": "referenceCategory",
+          "kind": "category",
+          "levels": [
+            "CHARITY",
+            "CHILDCARE",
+            "EDUCATION",
+            "FAMILY",
+            "FITNESS",
+            "INSURANCE",
+            "INVESTMENT",
+            "LOAN",
+            "PROPERTY",
+            "RENT",
+            "SAVINGS",
+            "SECURITY",
+            "SERVICES",
+            "TELECOM",
+            "UTILITIES",
+            "__missing__"
+          ]
+        },
+        {
+          "source": "derived",
+          "name": "referencePayeeConflict",
+          "kind": "boolean"
+        },
+        {
+          "source": "derived",
+          "name": "riskSignalCount",
+          "kind": "numeric",
+          "transform": null,
+          "median": 1,
+          "mean": 1.65016502,
+          "sd": 1.73244852,
+          "missingIndicator": false
+        }
+      ],
+      "columns": [
+        "frequency=DAILY",
+        "frequency=MONTHLY",
+        "frequency=ONE_OFF",
+        "frequency=WEEKLY",
+        "recipientBank=OTHER_LOCAL_BANK",
+        "recipientBank=OVERSEAS_BANK",
+        "recipientBank=SAME_BANK",
+        "recipientBank=__missing__",
+        "channel=BRANCH",
+        "channel=EMAIL_LINK",
+        "channel=MOBILE_APP",
+        "channel=ONLINE_BANKING",
+        "channel=__missing__",
+        "initiatedHour__sin",
+        "initiatedHour__cos",
+        "beneficiaryAddedMinutesBefore",
+        "beneficiaryAddedMinutesBefore__missing",
+        "userAverageAmount",
+        "userAverageAmount__missing",
+        "userStandingOrderCount",
+        "userStandingOrderMinAmount",
+        "userStandingOrderMinAmount__missing",
+        "userStandingOrderMaxAmount",
+        "userStandingOrderMaxAmount__missing",
+        "userKnownDeviceCount",
+        "userUsualChannel=BRANCH",
+        "userUsualChannel=EMAIL_LINK",
+        "userUsualChannel=MOBILE_APP",
+        "userUsualChannel=ONLINE_BANKING",
+        "userUsualChannel=__missing__",
+        "recipientPreviousPaymentCount",
+        "recipientHistoricalAverageAmount",
+        "recipientHistoricalAverageAmount__missing",
+        "recipientLastPaidDaysAgo",
+        "recipientLastPaidDaysAgo__missing",
+        "recipientAccountPreviouslyUsed=__missing__",
+        "recipientAccountPreviouslyUsed=false",
+        "recipientAccountPreviouslyUsed=true",
+        "existingStandingOrderToRecipient",
+        "existingStandingOrderAmount",
+        "existingStandingOrderAmount__missing",
+        "existingStandingOrderFrequency=DAILY",
+        "existingStandingOrderFrequency=MONTHLY",
+        "existingStandingOrderFrequency=ONE_OFF",
+        "existingStandingOrderFrequency=WEEKLY",
+        "existingStandingOrderFrequency=__missing__",
+        "amountLog10",
+        "amountToUserAverageRatio",
+        "amountToUserAverageRatio__missing",
+        "amountToStandingOrderMaxRatio",
+        "amountToStandingOrderMaxRatio__missing",
+        "amountLogZScore",
+        "amountLogZScore__missing",
+        "amountToRecipientAverageRatio",
+        "amountToRecipientAverageRatio__missing",
+        "amountChangeVsExistingOrderRatio",
+        "amountChangeVsExistingOrderRatio__missing",
+        "amountAboveUsualRange",
+        "roundThousandAmount",
+        "annualisedAmount",
+        "annualisedToUsualRatio",
+        "annualisedToUsualRatio__missing",
+        "unusualFrequency",
+        "frequencyChangedForRecipient",
+        "duplicateOfExistingOrder",
+        "unusualPaymentDay",
+        "newRecipient",
+        "recipientAccountChanged",
+        "recipientNameSimilarity",
+        "lookalikeRecipient",
+        "securityThemedRecipientName",
+        "overseasRecipient",
+        "beneficiaryAddedRecently",
+        "unusualHour",
+        "hoursOutsideActiveWindow",
+        "nightTime",
+        "hourTypicality",
+        "hourTypicality__missing",
+        "weekendInitiation",
+        "newDevice",
+        "unusualChannel",
+        "externalLinkChannel",
+        "textLength",
+        "textUrgency",
+        "textThreat",
+        "textBypassChecks",
+        "textExternalLink",
+        "textSensitiveInfo",
+        "textBankImpersonation",
+        "textChangedPaymentDetails",
+        "textPromisedReturns",
+        "textRiskTermCount",
+        "payeeCategory=CHARITY",
+        "payeeCategory=CHILDCARE",
+        "payeeCategory=EDUCATION",
+        "payeeCategory=FAMILY",
+        "payeeCategory=FITNESS",
+        "payeeCategory=INSURANCE",
+        "payeeCategory=INVESTMENT",
+        "payeeCategory=LOAN",
+        "payeeCategory=PROPERTY",
+        "payeeCategory=RENT",
+        "payeeCategory=SAVINGS",
+        "payeeCategory=SECURITY",
+        "payeeCategory=SERVICES",
+        "payeeCategory=TELECOM",
+        "payeeCategory=UTILITIES",
+        "payeeCategory=__missing__",
+        "referenceCategory=CHARITY",
+        "referenceCategory=CHILDCARE",
+        "referenceCategory=EDUCATION",
+        "referenceCategory=FAMILY",
+        "referenceCategory=FITNESS",
+        "referenceCategory=INSURANCE",
+        "referenceCategory=INVESTMENT",
+        "referenceCategory=LOAN",
+        "referenceCategory=PROPERTY",
+        "referenceCategory=RENT",
+        "referenceCategory=SAVINGS",
+        "referenceCategory=SECURITY",
+        "referenceCategory=SERVICES",
+        "referenceCategory=TELECOM",
+        "referenceCategory=UTILITIES",
+        "referenceCategory=__missing__",
+        "referencePayeeConflict",
+        "riskSignalCount"
+      ]
+    },
+    "weights": [
+      0.08803063,
+      -0.24233164,
+      -0.00341764,
+      0.15771865,
+      -0.03169116,
+      0.10533435,
+      -0.07364319,
+      0,
+      -1.05784732,
+      0.11582264,
+      0.51234934,
+      0.42967534,
+      0,
+      -0.30809681,
+      -0.21957672,
+      -1.04667356,
+      -1.11194204,
+      0.32433299,
+      0,
+      0.10690864,
+      0.18402658,
+      0,
+      -0.16161208,
+      0,
+      -0.15829579,
+      0,
+      0,
+      0.08990732,
+      -0.08990732,
+      0,
+      -0.22289589,
+      -0.14601069,
+      0.09924868,
+      0.13862512,
+      0.09924868,
+      0.09924868,
+      1.01269336,
+      -1.11194204,
+      0.05531402,
+      -0.08695534,
+      -0.05531402,
+      0,
+      0.0560098,
+      0,
+      -0.00069579,
+      -0.05531402,
+      -0.08649718,
+      -0.21229607,
+      0,
+      0.02383349,
+      0,
+      0.56524824,
+      0,
+      -0.06020729,
+      0.09924868,
+      0.24762189,
+      -0.05531402,
+      -0.41141677,
+      0.2518377,
+      0.31220581,
+      0.4336537,
+      0,
+      0.17966959,
+      -0.12089132,
+      0.04023316,
+      0.55034208,
+      0.09924868,
+      1.01269336,
+      -0.15421196,
+      1.30527243,
+      -0.26891681,
+      0.10533435,
+      -0.14662156,
+      -0.44688454,
+      0.5416763,
+      0.54712588,
+      0.19485028,
+      0,
+      -0.27538101,
+      0.85017084,
+      -0.94202468,
+      0.11582264,
+      0.24544181,
+      0.62284796,
+      -0.04048028,
+      -0.48522678,
+      0.01429557,
+      0.02192209,
+      0.02137429,
+      -0.62783567,
+      0.55543639,
+      -0.25172877,
+      -0.44735456,
+      0.00617968,
+      -0.14398758,
+      -0.04928469,
+      0.29731893,
+      0.44738332,
+      0.60411907,
+      0.24259398,
+      0.40922258,
+      -0.62369577,
+      -0.88127216,
+      -0.26925117,
+      0.6624721,
+      0.10273515,
+      -0.32912473,
+      -0.02805414,
+      -0.35904316,
+      -0.02180237,
+      -0.05111664,
+      -0.03466489,
+      0.30690159,
+      0.12242573,
+      0.6033584,
+      -0.09959611,
+      -0.52471369,
+      0.25399837,
+      -0.93781386,
+      0.38604287,
+      0.20328314,
+      0.05819436,
+      -0.48205247,
+      0.57659873,
+      0.81085596,
+      1.00550504
+    ],
+    "bias": -4.17553144
+  },
+  "thresholds": {
+    "candidate": {
+      "threshold": 0.6,
+      "rule": "highest F1 on the validation set",
+      "validationF1": 0.7674
+    },
+    "costSensitive": {
+      "threshold": 0.05,
+      "falseNegativeCost": 5,
+      "falsePositiveCost": 1,
+      "rule": "lowest validation cost"
+    },
+    "ruleEngineTunedCutoff": {
+      "riskAtLeast": 37,
+      "label": "Rule engine: score ≤ 63 (cutoff tuned for F1 on validation)",
+      "validationF1": 0.6882
+    },
+    "note": "Candidates for experimentation, chosen on validation data. Not a production threshold: the right value depends on the relative cost of a missed fraud versus a wrongly held legitimate payment."
+  },
+  "evaluation": {
+    "validation": {
+      "rocAuc": 0.9687,
+      "averagePrecision": 0.8512,
+      "logLoss": 0.1417,
+      "brierScore": 0.0459
+    },
+    "test": {
+      "records": 404,
+      "fraud": 48,
+      "legitimate": 356,
+      "ml": {
+        "rocAuc": 0.9639,
+        "averagePrecision": 0.7999,
+        "logLoss": 0.1553,
+        "brierScore": 0.0507,
+        "atCandidateThreshold": {
+          "threshold": 0.6,
+          "confusion": {
+            "truePositives": 23,
+            "falsePositives": 6,
+            "trueNegatives": 350,
+            "falseNegatives": 25
+          },
+          "accuracy": 0.9233,
+          "precision": 0.7931,
+          "recall": 0.4792,
+          "f1": 0.5974,
+          "specificity": 0.9831,
+          "falsePositiveRate": 0.0169,
+          "flagged": 29
+        },
+        "atHalf": {
+          "threshold": 0.5,
+          "confusion": {
+            "truePositives": 25,
+            "falsePositives": 9,
+            "trueNegatives": 347,
+            "falseNegatives": 23
+          },
+          "accuracy": 0.9208,
+          "precision": 0.7353,
+          "recall": 0.5208,
+          "f1": 0.6098,
+          "specificity": 0.9747,
+          "falsePositiveRate": 0.0253,
+          "flagged": 34
+        },
+        "thresholds": [
+          {
+            "threshold": 0.1,
+            "confusion": {
+              "truePositives": 42,
+              "falsePositives": 34,
+              "trueNegatives": 322,
+              "falseNegatives": 6
+            },
+            "accuracy": 0.901,
+            "precision": 0.5526,
+            "recall": 0.875,
+            "f1": 0.6774,
+            "specificity": 0.9045,
+            "falsePositiveRate": 0.0955,
+            "flagged": 76
+          },
+          {
+            "threshold": 0.2,
+            "confusion": {
+              "truePositives": 39,
+              "falsePositives": 23,
+              "trueNegatives": 333,
+              "falseNegatives": 9
+            },
+            "accuracy": 0.9208,
+            "precision": 0.629,
+            "recall": 0.8125,
+            "f1": 0.7091,
+            "specificity": 0.9354,
+            "falsePositiveRate": 0.0646,
+            "flagged": 62
+          },
+          {
+            "threshold": 0.3,
+            "confusion": {
+              "truePositives": 32,
+              "falsePositives": 14,
+              "trueNegatives": 342,
+              "falseNegatives": 16
+            },
+            "accuracy": 0.9257,
+            "precision": 0.6957,
+            "recall": 0.6667,
+            "f1": 0.6809,
+            "specificity": 0.9607,
+            "falsePositiveRate": 0.0393,
+            "flagged": 46
+          },
+          {
+            "threshold": 0.4,
+            "confusion": {
+              "truePositives": 30,
+              "falsePositives": 11,
+              "trueNegatives": 345,
+              "falseNegatives": 18
+            },
+            "accuracy": 0.9282,
+            "precision": 0.7317,
+            "recall": 0.625,
+            "f1": 0.6742,
+            "specificity": 0.9691,
+            "falsePositiveRate": 0.0309,
+            "flagged": 41
+          },
+          {
+            "threshold": 0.5,
+            "confusion": {
+              "truePositives": 25,
+              "falsePositives": 9,
+              "trueNegatives": 347,
+              "falseNegatives": 23
+            },
+            "accuracy": 0.9208,
+            "precision": 0.7353,
+            "recall": 0.5208,
+            "f1": 0.6098,
+            "specificity": 0.9747,
+            "falsePositiveRate": 0.0253,
+            "flagged": 34
+          },
+          {
+            "threshold": 0.6,
+            "confusion": {
+              "truePositives": 23,
+              "falsePositives": 6,
+              "trueNegatives": 350,
+              "falseNegatives": 25
+            },
+            "accuracy": 0.9233,
+            "precision": 0.7931,
+            "recall": 0.4792,
+            "f1": 0.5974,
+            "specificity": 0.9831,
+            "falsePositiveRate": 0.0169,
+            "flagged": 29
+          },
+          {
+            "threshold": 0.7,
+            "confusion": {
+              "truePositives": 21,
+              "falsePositives": 3,
+              "trueNegatives": 353,
+              "falseNegatives": 27
+            },
+            "accuracy": 0.9257,
+            "precision": 0.875,
+            "recall": 0.4375,
+            "f1": 0.5833,
+            "specificity": 0.9916,
+            "falsePositiveRate": 0.0084,
+            "flagged": 24
+          },
+          {
+            "threshold": 0.8,
+            "confusion": {
+              "truePositives": 20,
+              "falsePositives": 2,
+              "trueNegatives": 354,
+              "falseNegatives": 28
+            },
+            "accuracy": 0.9257,
+            "precision": 0.9091,
+            "recall": 0.4167,
+            "f1": 0.5714,
+            "specificity": 0.9944,
+            "falsePositiveRate": 0.0056,
+            "flagged": 22
+          },
+          {
+            "threshold": 0.9,
+            "confusion": {
+              "truePositives": 16,
+              "falsePositives": 0,
+              "trueNegatives": 356,
+              "falseNegatives": 32
+            },
+            "accuracy": 0.9208,
+            "precision": 1,
+            "recall": 0.3333,
+            "f1": 0.5,
+            "specificity": 1,
+            "falsePositiveRate": 0,
+            "flagged": 16
+          }
+        ]
+      },
+      "ruleEngine": {
+        "rocAuc": 0.8718,
+        "averagePrecision": 0.5274,
+        "operatingPoints": {
+          "highBand": {
+            "label": "Rule engine: HIGH risk band (score < 40)",
+            "threshold": 61,
+            "confusion": {
+              "truePositives": 4,
+              "falsePositives": 1,
+              "trueNegatives": 355,
+              "falseNegatives": 44
+            },
+            "accuracy": 0.8886,
+            "precision": 0.8,
+            "recall": 0.0833,
+            "f1": 0.1509,
+            "specificity": 0.9972,
+            "falsePositiveRate": 0.0028,
+            "flagged": 5
+          },
+          "reviewBand": {
+            "label": "Rule engine: MEDIUM or HIGH (score < 85)",
+            "threshold": 16,
+            "confusion": {
+              "truePositives": 36,
+              "falsePositives": 64,
+              "trueNegatives": 292,
+              "falseNegatives": 12
+            },
+            "accuracy": 0.8119,
+            "precision": 0.36,
+            "recall": 0.75,
+            "f1": 0.4865,
+            "specificity": 0.8202,
+            "falsePositiveRate": 0.1798,
+            "flagged": 100
+          },
+          "tuned": {
+            "label": "Rule engine: score ≤ 63 (cutoff tuned on validation)",
+            "threshold": 37,
+            "confusion": {
+              "truePositives": 17,
+              "falsePositives": 16,
+              "trueNegatives": 340,
+              "falseNegatives": 31
+            },
+            "accuracy": 0.8837,
+            "precision": 0.5152,
+            "recall": 0.3542,
+            "f1": 0.4198,
+            "specificity": 0.9551,
+            "falsePositiveRate": 0.0449,
+            "flagged": 33
+          }
+        }
+      },
+      "byScenario": [
+        {
+          "scenario": "account_takeover",
+          "riskClass": "fraudulent",
+          "records": 5,
+          "fraud": 5,
+          "meanProbability": 0.9823,
+          "ml": {
+            "fraudCaught": 5,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 4,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 5,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "bank_impersonation",
+          "riskClass": "fraudulent",
+          "records": 3,
+          "fraud": 3,
+          "meanProbability": 0.9865,
+          "ml": {
+            "fraudCaught": 3,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 3,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 3,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "frequency_drain",
+          "riskClass": "fraudulent",
+          "records": 3,
+          "fraud": 3,
+          "meanProbability": 0.9666,
+          "ml": {
+            "fraudCaught": 3,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 2,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 3,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "investment_scam",
+          "riskClass": "fraudulent",
+          "records": 4,
+          "fraud": 4,
+          "meanProbability": 0.8755,
+          "ml": {
+            "fraudCaught": 4,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 4,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 4,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "invoice_redirection",
+          "riskClass": "fraudulent",
+          "records": 2,
+          "fraud": 2,
+          "meanProbability": 0.5896,
+          "ml": {
+            "fraudCaught": 1,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "mimic_routine",
+          "riskClass": "fraudulent",
+          "records": 7,
+          "fraud": 7,
+          "meanProbability": 0.4082,
+          "ml": {
+            "fraudCaught": 2,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 3,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 5,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "weak_signal_stack",
+          "riskClass": "fraudulent",
+          "records": 2,
+          "fraud": 2,
+          "meanProbability": 0.3617,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 2,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "amount_adjustment",
+          "riskClass": "legit_normal",
+          "records": 42,
+          "fraud": 0,
+          "meanProbability": 0.0015,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "new_payee_everyday",
+          "riskClass": "legit_normal",
+          "records": 60,
+          "fraud": 0,
+          "meanProbability": 0.0077,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 1
+          }
+        },
+        {
+          "scenario": "routine_existing_payee",
+          "riskClass": "legit_normal",
+          "records": 98,
+          "fraud": 0,
+          "meanProbability": 0.0015,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "routine_known_biller",
+          "riskClass": "legit_normal",
+          "records": 58,
+          "fraud": 0,
+          "meanProbability": 0.0006,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 5
+          }
+        },
+        {
+          "scenario": "bank_advised_account_move",
+          "riskClass": "legit_unusual",
+          "records": 2,
+          "fraud": 0,
+          "meanProbability": 0.0741,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 2
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 2
+          }
+        },
+        {
+          "scenario": "ebill_link_setup",
+          "riskClass": "legit_unusual",
+          "records": 5,
+          "fraud": 0,
+          "meanProbability": 0.0098,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 1
+          }
+        },
+        {
+          "scenario": "frequency_restructure",
+          "riskClass": "legit_unusual",
+          "records": 3,
+          "fraud": 0,
+          "meanProbability": 0.0021,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "large_payment_known_payee",
+          "riskClass": "legit_unusual",
+          "records": 5,
+          "fraud": 0,
+          "meanProbability": 0.0132,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 5
+          }
+        },
+        {
+          "scenario": "late_night_routine",
+          "riskClass": "legit_unusual",
+          "records": 8,
+          "fraud": 0,
+          "meanProbability": 0.0091,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "life_event_multi_signal",
+          "riskClass": "legit_unusual",
+          "records": 11,
+          "fraud": 0,
+          "meanProbability": 0.3989,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 4
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 3
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 11
+          }
+        },
+        {
+          "scenario": "mixed_reference_legit",
+          "riskClass": "legit_unusual",
+          "records": 4,
+          "fraud": 0,
+          "meanProbability": 0.0029,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "new_device_routine",
+          "riskClass": "legit_unusual",
+          "records": 8,
+          "fraud": 0,
+          "meanProbability": 0.0042,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "new_investment_plan",
+          "riskClass": "legit_unusual",
+          "records": 2,
+          "fraud": 0,
+          "meanProbability": 0.2876,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 2
+          }
+        },
+        {
+          "scenario": "new_payee_large_planned",
+          "riskClass": "legit_unusual",
+          "records": 12,
+          "fraud": 0,
+          "meanProbability": 0.0979,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 9
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 12
+          }
+        },
+        {
+          "scenario": "payment_day_moved",
+          "riskClass": "legit_unusual",
+          "records": 3,
+          "fraud": 0,
+          "meanProbability": 0.0015,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "recent_beneficiary_everyday",
+          "riskClass": "legit_unusual",
+          "records": 2,
+          "fraud": 0,
+          "meanProbability": 0.1008,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "urgent_wording_legit",
+          "riskClass": "legit_unusual",
+          "records": 2,
+          "fraud": 0,
+          "meanProbability": 0.0029,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "changed_account_details",
+          "riskClass": "suspicious",
+          "records": 8,
+          "fraud": 6,
+          "meanProbability": 0.2627,
+          "ml": {
+            "fraudCaught": 1,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "frequency_spike",
+          "riskClass": "suspicious",
+          "records": 8,
+          "fraud": 4,
+          "meanProbability": 0.3559,
+          "ml": {
+            "fraudCaught": 1,
+            "legitFlagged": 1
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 4,
+            "legitFlagged": 4
+          }
+        },
+        {
+          "scenario": "lookalike_payee",
+          "riskClass": "suspicious",
+          "records": 5,
+          "fraud": 2,
+          "meanProbability": 0.3671,
+          "ml": {
+            "fraudCaught": 1,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "mild_pressure_wording",
+          "riskClass": "suspicious",
+          "records": 11,
+          "fraud": 3,
+          "meanProbability": 0.3274,
+          "ml": {
+            "fraudCaught": 1,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 3,
+            "legitFlagged": 7
+          }
+        },
+        {
+          "scenario": "new_payee_new_device",
+          "riskClass": "suspicious",
+          "records": 8,
+          "fraud": 2,
+          "meanProbability": 0.3094,
+          "ml": {
+            "fraudCaught": 1,
+            "legitFlagged": 1
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 2,
+            "legitFlagged": 6
+          }
+        },
+        {
+          "scenario": "weak_signal_combo",
+          "riskClass": "suspicious",
+          "records": 13,
+          "fraud": 5,
+          "meanProbability": 0.1888,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 1,
+            "legitFlagged": 2
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 5,
+            "legitFlagged": 8
+          }
+        }
+      ]
+    },
+    "recordSplitComparison": {
+      "note": "Same pipeline with a record-level split. Reported for comparison; the shipped model uses the user-level split.",
+      "rocAuc": 0.9751,
+      "threshold": 0.25,
+      "f1": 0.7244,
+      "precision": 0.5974,
+      "recall": 0.92
+    },
+    "ablations": [
+      {
+        "id": "without-riskSignalCount",
+        "note": "Same pipeline and split without the riskSignalCount feature. Comparison only.",
+        "rocAuc": 0.9646,
+        "threshold": 0.6,
+        "f1": 0.6027,
+        "precision": 0.88,
+        "recall": 0.4583
+      }
+    ],
+    "freshSeedHoldout": {
+      "config": {
+        "seed": "fraud-auth-stage3-holdout",
+        "users": 500,
+        "standingOrders": 5000
+      },
+      "records": 5000,
+      "fraud": 610,
+      "legitimate": 4390,
+      "ml": {
+        "rocAuc": 0.9724,
+        "averagePrecision": 0.8609,
+        "logLoss": 0.1311,
+        "brierScore": 0.041,
+        "atCandidateThreshold": {
+          "threshold": 0.6,
+          "confusion": {
+            "truePositives": 382,
+            "falsePositives": 57,
+            "trueNegatives": 4333,
+            "falseNegatives": 228
+          },
+          "accuracy": 0.943,
+          "precision": 0.8702,
+          "recall": 0.6262,
+          "f1": 0.7283,
+          "specificity": 0.987,
+          "falsePositiveRate": 0.013,
+          "flagged": 439
+        },
+        "atHalf": {
+          "threshold": 0.5,
+          "confusion": {
+            "truePositives": 424,
+            "falsePositives": 95,
+            "trueNegatives": 4295,
+            "falseNegatives": 186
+          },
+          "accuracy": 0.9438,
+          "precision": 0.817,
+          "recall": 0.6951,
+          "f1": 0.7511,
+          "specificity": 0.9784,
+          "falsePositiveRate": 0.0216,
+          "flagged": 519
+        },
+        "thresholds": [
+          {
+            "threshold": 0.1,
+            "confusion": {
+              "truePositives": 567,
+              "falsePositives": 501,
+              "trueNegatives": 3889,
+              "falseNegatives": 43
+            },
+            "accuracy": 0.8912,
+            "precision": 0.5309,
+            "recall": 0.9295,
+            "f1": 0.6758,
+            "specificity": 0.8859,
+            "falsePositiveRate": 0.1141,
+            "flagged": 1068
+          },
+          {
+            "threshold": 0.2,
+            "confusion": {
+              "truePositives": 517,
+              "falsePositives": 329,
+              "trueNegatives": 4061,
+              "falseNegatives": 93
+            },
+            "accuracy": 0.9156,
+            "precision": 0.6111,
+            "recall": 0.8475,
+            "f1": 0.7102,
+            "specificity": 0.9251,
+            "falsePositiveRate": 0.0749,
+            "flagged": 846
+          },
+          {
+            "threshold": 0.3,
+            "confusion": {
+              "truePositives": 488,
+              "falsePositives": 224,
+              "trueNegatives": 4166,
+              "falseNegatives": 122
+            },
+            "accuracy": 0.9308,
+            "precision": 0.6854,
+            "recall": 0.8,
+            "f1": 0.7383,
+            "specificity": 0.949,
+            "falsePositiveRate": 0.051,
+            "flagged": 712
+          },
+          {
+            "threshold": 0.4,
+            "confusion": {
+              "truePositives": 453,
+              "falsePositives": 151,
+              "trueNegatives": 4239,
+              "falseNegatives": 157
+            },
+            "accuracy": 0.9384,
+            "precision": 0.75,
+            "recall": 0.7426,
+            "f1": 0.7463,
+            "specificity": 0.9656,
+            "falsePositiveRate": 0.0344,
+            "flagged": 604
+          },
+          {
+            "threshold": 0.5,
+            "confusion": {
+              "truePositives": 424,
+              "falsePositives": 95,
+              "trueNegatives": 4295,
+              "falseNegatives": 186
+            },
+            "accuracy": 0.9438,
+            "precision": 0.817,
+            "recall": 0.6951,
+            "f1": 0.7511,
+            "specificity": 0.9784,
+            "falsePositiveRate": 0.0216,
+            "flagged": 519
+          },
+          {
+            "threshold": 0.6,
+            "confusion": {
+              "truePositives": 382,
+              "falsePositives": 57,
+              "trueNegatives": 4333,
+              "falseNegatives": 228
+            },
+            "accuracy": 0.943,
+            "precision": 0.8702,
+            "recall": 0.6262,
+            "f1": 0.7283,
+            "specificity": 0.987,
+            "falsePositiveRate": 0.013,
+            "flagged": 439
+          },
+          {
+            "threshold": 0.7,
+            "confusion": {
+              "truePositives": 350,
+              "falsePositives": 30,
+              "trueNegatives": 4360,
+              "falseNegatives": 260
+            },
+            "accuracy": 0.942,
+            "precision": 0.9211,
+            "recall": 0.5738,
+            "f1": 0.7071,
+            "specificity": 0.9932,
+            "falsePositiveRate": 0.0068,
+            "flagged": 380
+          },
+          {
+            "threshold": 0.8,
+            "confusion": {
+              "truePositives": 304,
+              "falsePositives": 16,
+              "trueNegatives": 4374,
+              "falseNegatives": 306
+            },
+            "accuracy": 0.9356,
+            "precision": 0.95,
+            "recall": 0.4984,
+            "f1": 0.6538,
+            "specificity": 0.9964,
+            "falsePositiveRate": 0.0036,
+            "flagged": 320
+          },
+          {
+            "threshold": 0.9,
+            "confusion": {
+              "truePositives": 251,
+              "falsePositives": 3,
+              "trueNegatives": 4387,
+              "falseNegatives": 359
+            },
+            "accuracy": 0.9276,
+            "precision": 0.9882,
+            "recall": 0.4115,
+            "f1": 0.581,
+            "specificity": 0.9993,
+            "falsePositiveRate": 0.0007,
+            "flagged": 254
+          }
+        ]
+      },
+      "ruleEngine": {
+        "rocAuc": 0.9083,
+        "averagePrecision": 0.6615,
+        "operatingPoints": {
+          "highBand": {
+            "label": "Rule engine: HIGH risk band (score < 40)",
+            "threshold": 61,
+            "confusion": {
+              "truePositives": 81,
+              "falsePositives": 2,
+              "trueNegatives": 4388,
+              "falseNegatives": 529
+            },
+            "accuracy": 0.8938,
+            "precision": 0.9759,
+            "recall": 0.1328,
+            "f1": 0.2338,
+            "specificity": 0.9995,
+            "falsePositiveRate": 0.0005,
+            "flagged": 83
+          },
+          "reviewBand": {
+            "label": "Rule engine: MEDIUM or HIGH (score < 85)",
+            "threshold": 16,
+            "confusion": {
+              "truePositives": 517,
+              "falsePositives": 888,
+              "trueNegatives": 3502,
+              "falseNegatives": 93
+            },
+            "accuracy": 0.8038,
+            "precision": 0.368,
+            "recall": 0.8475,
+            "f1": 0.5132,
+            "specificity": 0.7977,
+            "falsePositiveRate": 0.2023,
+            "flagged": 1405
+          },
+          "tuned": {
+            "label": "Rule engine: score ≤ 63 (cutoff tuned on validation)",
+            "threshold": 37,
+            "confusion": {
+              "truePositives": 317,
+              "falsePositives": 173,
+              "trueNegatives": 4217,
+              "falseNegatives": 293
+            },
+            "accuracy": 0.9068,
+            "precision": 0.6469,
+            "recall": 0.5197,
+            "f1": 0.5764,
+            "specificity": 0.9606,
+            "falsePositiveRate": 0.0394,
+            "flagged": 490
+          }
+        }
+      },
+      "byScenario": [
+        {
+          "scenario": "account_takeover",
+          "riskClass": "fraudulent",
+          "records": 76,
+          "fraud": 76,
+          "meanProbability": 0.989,
+          "ml": {
+            "fraudCaught": 76,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 72,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 76,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "bank_impersonation",
+          "riskClass": "fraudulent",
+          "records": 97,
+          "fraud": 97,
+          "meanProbability": 0.9806,
+          "ml": {
+            "fraudCaught": 97,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 97,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 97,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "frequency_drain",
+          "riskClass": "fraudulent",
+          "records": 37,
+          "fraud": 37,
+          "meanProbability": 0.949,
+          "ml": {
+            "fraudCaught": 37,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 20,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 37,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "investment_scam",
+          "riskClass": "fraudulent",
+          "records": 47,
+          "fraud": 47,
+          "meanProbability": 0.8207,
+          "ml": {
+            "fraudCaught": 42,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 44,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 47,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "invoice_redirection",
+          "riskClass": "fraudulent",
+          "records": 54,
+          "fraud": 54,
+          "meanProbability": 0.5962,
+          "ml": {
+            "fraudCaught": 26,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 3,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 26,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "mimic_routine",
+          "riskClass": "fraudulent",
+          "records": 58,
+          "fraud": 58,
+          "meanProbability": 0.4162,
+          "ml": {
+            "fraudCaught": 20,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 31,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 45,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "weak_signal_stack",
+          "riskClass": "fraudulent",
+          "records": 31,
+          "fraud": 31,
+          "meanProbability": 0.559,
+          "ml": {
+            "fraudCaught": 14,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 14,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 31,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "amount_adjustment",
+          "riskClass": "legit_normal",
+          "records": 520,
+          "fraud": 0,
+          "meanProbability": 0.0017,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 2
+          }
+        },
+        {
+          "scenario": "new_payee_everyday",
+          "riskClass": "legit_normal",
+          "records": 712,
+          "fraud": 0,
+          "meanProbability": 0.0088,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 79
+          }
+        },
+        {
+          "scenario": "routine_existing_payee",
+          "riskClass": "legit_normal",
+          "records": 1063,
+          "fraud": 0,
+          "meanProbability": 0.0013,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 3
+          }
+        },
+        {
+          "scenario": "routine_known_biller",
+          "riskClass": "legit_normal",
+          "records": 705,
+          "fraud": 0,
+          "meanProbability": 0.0008,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 6
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 64
+          }
+        },
+        {
+          "scenario": "bank_advised_account_move",
+          "riskClass": "legit_unusual",
+          "records": 40,
+          "fraud": 0,
+          "meanProbability": 0.23,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 4
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 38
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 40
+          }
+        },
+        {
+          "scenario": "branch_setup",
+          "riskClass": "legit_unusual",
+          "records": 60,
+          "fraud": 0,
+          "meanProbability": 0.1013,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 60
+          }
+        },
+        {
+          "scenario": "ebill_link_setup",
+          "riskClass": "legit_unusual",
+          "records": 62,
+          "fraud": 0,
+          "meanProbability": 0.0103,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 20
+          }
+        },
+        {
+          "scenario": "frequency_restructure",
+          "riskClass": "legit_unusual",
+          "records": 62,
+          "fraud": 0,
+          "meanProbability": 0.0016,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 2
+          }
+        },
+        {
+          "scenario": "large_payment_known_payee",
+          "riskClass": "legit_unusual",
+          "records": 126,
+          "fraud": 0,
+          "meanProbability": 0.0113,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 4
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 126
+          }
+        },
+        {
+          "scenario": "late_night_routine",
+          "riskClass": "legit_unusual",
+          "records": 87,
+          "fraud": 0,
+          "meanProbability": 0.0107,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 10
+          }
+        },
+        {
+          "scenario": "life_event_multi_signal",
+          "riskClass": "legit_unusual",
+          "records": 81,
+          "fraud": 0,
+          "meanProbability": 0.3494,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 17
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 17
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 81
+          }
+        },
+        {
+          "scenario": "mixed_reference_legit",
+          "riskClass": "legit_unusual",
+          "records": 57,
+          "fraud": 0,
+          "meanProbability": 0.0032,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "new_device_routine",
+          "riskClass": "legit_unusual",
+          "records": 77,
+          "fraud": 0,
+          "meanProbability": 0.0051,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 8
+          }
+        },
+        {
+          "scenario": "new_investment_plan",
+          "riskClass": "legit_unusual",
+          "records": 55,
+          "fraud": 0,
+          "meanProbability": 0.087,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 26
+          }
+        },
+        {
+          "scenario": "new_payee_large_planned",
+          "riskClass": "legit_unusual",
+          "records": 119,
+          "fraud": 0,
+          "meanProbability": 0.0601,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 76
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 119
+          }
+        },
+        {
+          "scenario": "payment_day_moved",
+          "riskClass": "legit_unusual",
+          "records": 53,
+          "fraud": 0,
+          "meanProbability": 0.0047,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 8
+          }
+        },
+        {
+          "scenario": "recent_beneficiary_everyday",
+          "riskClass": "legit_unusual",
+          "records": 62,
+          "fraud": 0,
+          "meanProbability": 0.2373,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 3
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 8
+          }
+        },
+        {
+          "scenario": "urgent_wording_legit",
+          "riskClass": "legit_unusual",
+          "records": 59,
+          "fraud": 0,
+          "meanProbability": 0.0213,
+          "ml": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 2
+          }
+        },
+        {
+          "scenario": "changed_account_details",
+          "riskClass": "suspicious",
+          "records": 133,
+          "fraud": 30,
+          "meanProbability": 0.3228,
+          "ml": {
+            "fraudCaught": 8,
+            "legitFlagged": 8
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          }
+        },
+        {
+          "scenario": "frequency_spike",
+          "riskClass": "suspicious",
+          "records": 73,
+          "fraud": 28,
+          "meanProbability": 0.3097,
+          "ml": {
+            "fraudCaught": 6,
+            "legitFlagged": 4
+          },
+          "rulesTuned": {
+            "fraudCaught": 2,
+            "legitFlagged": 1
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 28,
+            "legitFlagged": 45
+          }
+        },
+        {
+          "scenario": "lookalike_payee",
+          "riskClass": "suspicious",
+          "records": 93,
+          "fraud": 36,
+          "meanProbability": 0.3473,
+          "ml": {
+            "fraudCaught": 15,
+            "legitFlagged": 7
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 17,
+            "legitFlagged": 10
+          }
+        },
+        {
+          "scenario": "mild_pressure_wording",
+          "riskClass": "suspicious",
+          "records": 68,
+          "fraud": 21,
+          "meanProbability": 0.3225,
+          "ml": {
+            "fraudCaught": 7,
+            "legitFlagged": 1
+          },
+          "rulesTuned": {
+            "fraudCaught": 0,
+            "legitFlagged": 0
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 18,
+            "legitFlagged": 37
+          }
+        },
+        {
+          "scenario": "new_payee_new_device",
+          "riskClass": "suspicious",
+          "records": 100,
+          "fraud": 43,
+          "meanProbability": 0.3897,
+          "ml": {
+            "fraudCaught": 16,
+            "legitFlagged": 7
+          },
+          "rulesTuned": {
+            "fraudCaught": 8,
+            "legitFlagged": 5
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 43,
+            "legitFlagged": 57
+          }
+        },
+        {
+          "scenario": "weak_signal_combo",
+          "riskClass": "suspicious",
+          "records": 133,
+          "fraud": 52,
+          "meanProbability": 0.3125,
+          "ml": {
+            "fraudCaught": 18,
+            "legitFlagged": 6
+          },
+          "rulesTuned": {
+            "fraudCaught": 26,
+            "legitFlagged": 26
+          },
+          "rulesReviewBand": {
+            "fraudCaught": 52,
+            "legitFlagged": 81
+          }
+        }
+      ]
+    }
+  },
+  "diagnostics": {
+    "largestWeights": [
+      {
+        "column": "lookalikeRecipient",
+        "weight": 1.3053
+      },
+      {
+        "column": "beneficiaryAddedMinutesBefore__missing",
+        "weight": -1.1119
+      },
+      {
+        "column": "recipientAccountPreviouslyUsed=true",
+        "weight": -1.1119
+      },
+      {
+        "column": "channel=BRANCH",
+        "weight": -1.0578
+      },
+      {
+        "column": "beneficiaryAddedMinutesBefore",
+        "weight": -1.0467
+      },
+      {
+        "column": "recipientAccountChanged",
+        "weight": 1.0127
+      },
+      {
+        "column": "recipientAccountPreviouslyUsed=false",
+        "weight": 1.0127
+      },
+      {
+        "column": "riskSignalCount",
+        "weight": 1.0055
+      },
+      {
+        "column": "unusualChannel",
+        "weight": -0.942
+      },
+      {
+        "column": "referenceCategory=SAVINGS",
+        "weight": -0.9378
+      },
+      {
+        "column": "payeeCategory=SAVINGS",
+        "weight": -0.8813
+      },
+      {
+        "column": "newDevice",
+        "weight": 0.8502
+      },
+      {
+        "column": "referencePayeeConflict",
+        "weight": 0.8109
+      },
+      {
+        "column": "payeeCategory=SERVICES",
+        "weight": 0.6625
+      },
+      {
+        "column": "textChangedPaymentDetails",
+        "weight": -0.6278
+      }
+    ],
+    "strongestSingleColumns": [
+      {
+        "column": "riskSignalCount",
+        "auc": 0.9512
+      },
+      {
+        "column": "beneficiaryAddedMinutesBefore",
+        "auc": 0.1184
+      },
+      {
+        "column": "annualisedToUsualRatio",
+        "auc": 0.8432
+      },
+      {
+        "column": "beneficiaryAddedRecently",
+        "auc": 0.8379
+      },
+      {
+        "column": "beneficiaryAddedMinutesBefore__missing",
+        "auc": 0.1811
+      },
+      {
+        "column": "recipientAccountPreviouslyUsed=true",
+        "auc": 0.1811
+      },
+      {
+        "column": "annualisedAmount",
+        "auc": 0.8127
+      },
+      {
+        "column": "recipientPreviousPaymentCount",
+        "auc": 0.2172
+      },
+      {
+        "column": "amountToRecipientAverageRatio__missing",
+        "auc": 0.7737
+      },
+      {
+        "column": "newRecipient",
+        "auc": 0.7737
+      },
+      {
+        "column": "recipientAccountPreviouslyUsed=__missing__",
+        "auc": 0.7737
+      },
+      {
+        "column": "recipientHistoricalAverageAmount__missing",
+        "auc": 0.7737
+      }
+    ]
+  },
+  "datasetAudit": {
+    "shortcuts": [],
+    "thresholds": {
+      "minCount": 15,
+      "purity": 0.97
+    },
+    "riskSignalCount": {
+      "legit_normal": {
+        "min": 0,
+        "max": 3
+      },
+      "legit_unusual": {
+        "min": 0,
+        "max": 6
+      },
+      "suspicious": {
+        "min": 2,
+        "max": 6
+      },
+      "fraudulent": {
+        "min": 1,
+        "max": 10
+      },
+      "isFraud=true": {
+        "min": 1,
+        "max": 10
+      },
+      "isFraud=false": {
+        "min": 0,
+        "max": 6
+      }
+    },
+    "missingByClass": {
+      "payeeCategory": {
+        "legit_normal": 0.064,
+        "legit_unusual": 0.125,
+        "suspicious": 0.117,
+        "fraudulent": 0.475
+      },
+      "referenceCategory": {
+        "legit_normal": 0.263,
+        "legit_unusual": 0.215,
+        "suspicious": 0.213,
+        "fraudulent": 0.569
+      },
+      "beneficiaryAddedMinutesBefore": {
+        "legit_normal": 0.773,
+        "legit_unusual": 0.535,
+        "suspicious": 0,
+        "fraudulent": 0
+      },
+      "recipientAccountPreviouslyUsed": {
+        "legit_normal": 0.228,
+        "legit_unusual": 0.465,
+        "suspicious": 0.8,
+        "fraudulent": 0.944
+      }
+    },
+    "strongestValues": [
+      {
+        "feature": "textBankImpersonation",
+        "value": "true",
+        "n": 28,
+        "fraud": 22,
+        "legitNormal": 0,
+        "legitUnusual": 6,
+        "fraudShare": 0.786
+      },
+      {
+        "feature": "frequency",
+        "value": "DAILY",
+        "n": 44,
+        "fraud": 30,
+        "legitNormal": 0,
+        "legitUnusual": 6,
+        "fraudShare": 0.682
+      },
+      {
+        "feature": "textPromisedReturns",
+        "value": "true",
+        "n": 25,
+        "fraud": 14,
+        "legitNormal": 0,
+        "legitUnusual": 11,
+        "fraudShare": 0.56
+      },
+      {
+        "feature": "textBypassChecks",
+        "value": "true",
+        "n": 20,
+        "fraud": 11,
+        "legitNormal": 0,
+        "legitUnusual": 9,
+        "fraudShare": 0.55
+      },
+      {
+        "feature": "unusualPaymentDay",
+        "value": "true",
+        "n": 133,
+        "fraud": 73,
+        "legitNormal": 0,
+        "legitUnusual": 35,
+        "fraudShare": 0.549
+      },
+      {
+        "feature": "beneficiaryAddedRecently",
+        "value": "true",
+        "n": 346,
+        "fraud": 188,
+        "legitNormal": 0,
+        "legitUnusual": 81,
+        "fraudShare": 0.543
+      },
+      {
+        "feature": "textUrgency",
+        "value": "true",
+        "n": 97,
+        "fraud": 48,
+        "legitNormal": 0,
+        "legitUnusual": 25,
+        "fraudShare": 0.495
+      },
+      {
+        "feature": "recipientAccountPreviouslyUsed",
+        "value": "false",
+        "n": 57,
+        "fraud": 27,
+        "legitNormal": 0,
+        "legitUnusual": 0,
+        "fraudShare": 0.474
+      }
+    ],
+    "strongestSingleColumns": [
+      {
+        "column": "riskSignalCount",
+        "auc": 0.9487,
+        "strength": 0.8973
+      },
+      {
+        "column": "beneficiaryAddedMinutesBefore",
+        "auc": 0.1336,
+        "strength": 0.7329
+      },
+      {
+        "column": "beneficiaryAddedRecently",
+        "auc": 0.8355,
+        "strength": 0.671
+      },
+      {
+        "column": "annualisedToUsualRatio",
+        "auc": 0.8328,
+        "strength": 0.6655
+      },
+      {
+        "column": "beneficiaryAddedMinutesBefore__missing",
+        "auc": 0.1746,
+        "strength": 0.6509
+      },
+      {
+        "column": "recipientAccountPreviouslyUsed=true",
+        "auc": 0.1746,
+        "strength": 0.6509
+      },
+      {
+        "column": "annualisedAmount",
+        "auc": 0.8129,
+        "strength": 0.6258
+      },
+      {
+        "column": "recipientPreviousPaymentCount",
+        "auc": 0.213,
+        "strength": 0.5739
+      }
+    ]
+  },
+  "demoRequests": {
+    "note": "The app's three demo requests, scored for information only. Never trained on; their rule-engine scores are not targets.",
+    "predictions": [
+      {
+        "demoCase": "FRAUD",
+        "ruleEngineScore": 8,
+        "fraudProbability": 0.9999,
+        "warnings": []
+      },
+      {
+        "demoCase": "GREY",
+        "ruleEngineScore": 69,
+        "fraudProbability": 0.174,
+        "warnings": []
+      },
+      {
+        "demoCase": "LEGITIMATE",
+        "ruleEngineScore": 100,
+        "fraudProbability": 0.0091,
+        "warnings": []
+      }
+    ]
+  }
+}

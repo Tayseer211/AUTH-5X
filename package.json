@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test \"src/**/*.test.js\"",
-    "data:generate": "node scripts/generate-synthetic-dataset.js"
+    "data:generate": "node scripts/generate-synthetic-dataset.js",
+    "model:train": "node scripts/train-fraud-model.js",
+    "data:audit": "node scripts/audit-synthetic-dataset.js"
   },
   "dependencies": {
     "react": "^18.3.1",

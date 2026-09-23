@@ -2,6 +2,8 @@ import { addMonths, daysInMonth, zonedDate, zonedParts } from '../../utils/time.
 import { recipientSimilarity } from '../features.js'
 import {
   BILL_CATEGORIES,
+  GENERIC_DESCRIPTIONS,
+  GENERIC_SUFFIXES,
   MERCHANTS,
   NAME_STEMS,
   PAYEE_CATEGORIES,
@@ -33,7 +35,7 @@ export const SEGMENTS = {
     activeEnd: [22, 24],
     devices: [1, 2],
     channels: { MOBILE_APP: 0.7, ONLINE_BANKING: 0.3 },
-    categories: { TELECOM: 3, FITNESS: 3, RENT: 2, SAVINGS: 2, FAMILY: 1, LOAN: 1, INSURANCE: 1 },
+    categories: { TELECOM: 3, FITNESS: 3, RENT: 2, SAVINGS: 2, FAMILY: 1, LOAN: 1, INSURANCE: 1, INVESTMENT_PLAN: 1 },
   },
   FAMILY_HOUSEHOLD: {
     weight: 4,
@@ -44,7 +46,7 @@ export const SEGMENTS = {
     activeEnd: [21, 23],
     devices: [2, 3],
     channels: { ONLINE_BANKING: 0.55, MOBILE_APP: 0.45 },
-    categories: { PROPERTY: 3, TELECOM: 3, INSURANCE: 3, EDUCATION: 3, CHILDCARE: 2, UTILITIES: 2, LOAN: 2, SAVINGS: 1 },
+    categories: { PROPERTY: 3, TELECOM: 3, INSURANCE: 3, EDUCATION: 3, CHILDCARE: 2, UTILITIES: 2, LOAN: 2, SAVINGS: 1, HOME_SECURITY: 1, INVESTMENT_PLAN: 1 },
   },
   RETIREE: {
     weight: 2,
@@ -55,7 +57,7 @@ export const SEGMENTS = {
     activeEnd: [18, 20],
     devices: [1, 1],
     channels: { ONLINE_BANKING: 0.8, MOBILE_APP: 0.2 },
-    categories: { PROPERTY: 3, INSURANCE: 3, UTILITIES: 3, CHARITY: 2, FAMILY: 2, TELECOM: 1 },
+    categories: { PROPERTY: 3, INSURANCE: 3, UTILITIES: 3, CHARITY: 2, FAMILY: 2, TELECOM: 1, HOME_SECURITY: 1, INVESTMENT_PLAN: 1 },
   },
   SMALL_BUSINESS_OWNER: {
     weight: 2,
@@ -66,7 +68,7 @@ export const SEGMENTS = {
     activeEnd: [22, 24],
     devices: [2, 3],
     channels: { ONLINE_BANKING: 0.7, MOBILE_APP: 0.3 },
-    categories: { SERVICES: 3, PROPERTY: 2, RENT: 3, INSURANCE: 2, LOAN: 3, TELECOM: 2, UTILITIES: 2 },
+    categories: { SERVICES: 3, PROPERTY: 2, RENT: 3, INSURANCE: 2, LOAN: 3, TELECOM: 2, UTILITIES: 2, HOME_SECURITY: 1, INVESTMENT_PLAN: 1 },
   },
 }
 
@@ -92,13 +94,17 @@ export function newAccount(rng) {
   return rng.digits(4)
 }
 
+// Share of business payees whose name gives no hint of what they do.
+const GENERIC_NAME_SHARE = 0.15
+
 // A fictional payee of `category` whose name does not clash with or closely
 // resemble any name in `takenNames`.
 export function createPayee(rng, category, takenNames = []) {
   const spec = PAYEE_CATEGORIES[category]
+  const suffixes = !spec.personal && rng.chance(GENERIC_NAME_SHARE) ? GENERIC_SUFFIXES : spec.suffixes
   let name = null
   for (let attempt = 0; attempt < 20 && !name; attempt += 1) {
-    const candidate = spec.personal ? personalAccountName(rng, spec.personal) : `${rng.pick(NAME_STEMS)} ${rng.pick(spec.suffixes)}`
+    const candidate = spec.personal ? personalAccountName(rng, spec.personal) : `${rng.pick(NAME_STEMS)} ${rng.pick(suffixes)}`
     if (takenNames.every((taken) => recipientSimilarity(candidate, taken) < 0.75 && taken.toLowerCase() !== candidate.toLowerCase())) name = candidate
   }
   if (!name) name = `${rng.pick(NAME_STEMS)} ${rng.pick(NAME_STEMS)} ${spec.suffixes?.[0] ?? 'Account'} ${rng.digits(2)}`
@@ -120,6 +126,9 @@ function wrapDay(day) {
 }
 
 // ---- Persona -------------------------------------------------------------
+
+// Some customers describe payments generically ("Monthly payment").
+const payeeDescription = (rng, category) => rng.pick(rng.chance(0.15) ? GENERIC_DESCRIPTIONS : PAYEE_CATEGORIES[category].descriptions)
 
 export function createPersona(rng, index) {
   const segmentName = rng.weighted(Object.entries(SEGMENTS).map(([name, segment]) => [name, segment.weight]))
@@ -156,17 +165,17 @@ export function createPersona(rng, index) {
       dayOfMonth: rng.chance(0.7) ? wrapDay(payday + rng.int(-3, 3)) : rng.int(1, 28),
       startedMonthsAgo: rng.int(2, 24),
       deviceId: rng.pick(devices),
-      description: rng.pick(PAYEE_CATEGORIES[category].descriptions),
+      description: payeeDescription(rng, category),
     }
   })
 
   const billPayees = Array.from({ length: rng.int(1, 3) }, () => {
     const category = rng.pick(BILL_CATEGORIES)
-    return { payee: addPayee(category), category, typicalAmount: typicalAmount(rng, category, factor), description: rng.pick(PAYEE_CATEGORIES[category].descriptions) }
+    return { payee: addPayee(category), category, typicalAmount: typicalAmount(rng, category, factor), description: payeeDescription(rng, category) }
   })
   const transferPayees = Array.from({ length: rng.int(1, 2) }, () => {
     const category = rng.pick(TRANSFER_CATEGORIES)
-    return { payee: addPayee(category), category, typicalAmount: typicalAmount(rng, category, factor), description: rng.pick(PAYEE_CATEGORIES[category].descriptions) }
+    return { payee: addPayee(category), category, typicalAmount: typicalAmount(rng, category, factor), description: payeeDescription(rng, category) }
   })
   const merchants = rng.sample(MERCHANTS, rng.int(4, MERCHANTS.length)).map(([suffix, median]) => {
     let name = `${rng.pick(NAME_STEMS)} ${suffix}`

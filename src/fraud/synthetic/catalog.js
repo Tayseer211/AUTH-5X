@@ -83,6 +83,20 @@ export const PAYEE_CATEGORIES = {
     descriptions: ['Monthly donation', 'Charity pledge'],
     refPrefix: 'DON',
   },
+  // Genuine businesses whose names use the same "safe / guardian / shield /
+  // invest" vocabulary as scam payees, so that wording is not a fraud label.
+  HOME_SECURITY: {
+    suffixes: ['Safeguard Alarms', 'Home Protection Services', 'Guardian Monitoring', 'Shield Alarm Systems'],
+    amount: [600, 3500],
+    descriptions: ['Alarm monitoring', 'Home protection plan', 'Guardian patrol subscription', 'Safe-deposit box rental'],
+    refPrefix: 'SEC',
+  },
+  INVESTMENT_PLAN: {
+    suffixes: ['Unit Trust', 'Pension Fund', 'Investment Management', 'Asset Management'],
+    amount: [1000, 10000],
+    descriptions: ['Pension contribution', 'Unit trust savings plan', 'Monthly investment plan'],
+    refPrefix: 'PLN',
+  },
   SAVINGS: {
     personal: 'Savings account',
     amount: [2000, 20000],
@@ -99,10 +113,17 @@ export const PAYEE_CATEGORIES = {
 
 // Categories usually paid by standing order vs. ad-hoc bill payment or
 // transfer (the latter become "known payees without an arrangement").
-export const BILL_CATEGORIES = ['UTILITIES', 'TELECOM', 'INSURANCE', 'SERVICES']
+export const BILL_CATEGORIES = ['UTILITIES', 'TELECOM', 'INSURANCE', 'SERVICES', 'HOME_SECURITY']
 export const TRANSFER_CATEGORIES = ['FAMILY', 'SAVINGS', 'SERVICES', 'RENT']
 // Categories a legitimate new payee is commonly drawn from.
-export const EVERYDAY_CATEGORIES = ['TELECOM', 'FITNESS', 'INSURANCE', 'SERVICES', 'UTILITIES', 'CHARITY', 'CHILDCARE']
+export const EVERYDAY_CATEGORIES = ['TELECOM', 'FITNESS', 'INSURANCE', 'SERVICES', 'UTILITIES', 'CHARITY', 'CHILDCARE', 'HOME_SECURITY']
+
+// Real payee names and payment descriptions often say nothing about the kind
+// of service. Some legitimate payees and requests use these, so a missing
+// payee/reference category is not a fraud label. None matches a keyword in
+// CATEGORY_KEYWORDS (features.js).
+export const GENERIC_SUFFIXES = ['Ltd', 'Co. Ltd', 'Enterprises', '& Associates', 'Group', 'Partners']
+export const GENERIC_DESCRIPTIONS = ['Monthly payment', 'Standing order', 'Payment as agreed', 'Regular payment', 'Contribution']
 // Categories that plausibly justify a large, planned payment.
 export const PLANNED_LARGE_CATEGORIES = ['EDUCATION', 'LOAN', 'PROPERTY', 'RENT', 'INSURANCE']
 
@@ -118,7 +139,7 @@ export const MERCHANTS = [
   ['Market Stall', 350],
 ]
 
-export const BANKS = ['SAME_BANK', 'OTHER_LOCAL_BANK', 'OVERSEAS_BANK']
+export { RECIPIENT_BANKS as BANKS } from '../../data/recipientBanks.js'
 export const CHANNELS = ['ONLINE_BANKING', 'MOBILE_APP', 'BRANCH', 'EMAIL_LINK']
 
 // Fraudster payee names.
@@ -163,12 +184,52 @@ export const LARGE_LEGIT_TEXTS = [
   'Catch-up payment for {descLower} arrears, agreed with {payee}.',
   'Revised {descLower} following the new contract. Ref {ref}.',
   'First-term {descLower} deposit for {payee}.',
+  'No need to call to confirm – this is the agreed {descLower} for {payee}.',
 ]
 
 export const LEGIT_URGENT_TEXTS = [
   'Urgent: {descLower} due before 15:00 on Friday, ref {ref}.',
   'Needs to go out today so the {descLower} is not late. Ref {ref}.',
   'Please process as soon as possible – {descLower} for {payee}.',
+]
+
+// Genuine supplier notices quoted by the customer: threat wording
+// ("suspended", "penalty") without a scam.
+export const LEGIT_NOTICE_TEXTS = [
+  'Service will be suspended if the arrears are not cleared this month, per the {payee} notice.',
+  'Setting this up to avoid the late payment penalty on the {descLower}.',
+  '{payee} sent a closure warning for the unpaid {descLower}; paying it off now.',
+]
+
+// A genuine customer who needs no call-back, in their own words.
+export const NO_CALLBACK_TEXTS = [
+  'No need to call me to confirm – this is the agreed {descLower} for {payee}.',
+  'Agreed with {payee} in person, no need to contact me about it. Ref {ref}.',
+]
+
+// A genuine e-bill "pay by standing order" link from a real biller.
+export const EBILL_TEXTS = [
+  'Set up from the e-bill link sent by {payee}: https://billing-{code}.example/pay',
+  'Payment link from {payee}: https://pay-{code}.example/standing-order',
+  '',
+]
+
+// A genuine customer following a real fraud alert from their bank: they move
+// their savings to a newly opened account. Uses the same security vocabulary
+// as impersonation scams.
+export const BANK_ADVISED_TEXTS = [
+  'Moving my savings to the new account as advised by the bank fraud department after the card incident.',
+  'The branch security team recommended a new account after the card fraud; transferring my savings there.',
+  'Card replaced and new PIN received; moving the savings order to my new account as agreed at the branch.',
+  '',
+]
+
+// A genuine, regulated savings plan.
+export const LEGIT_RETURNS_TEXTS = [
+  'Monthly contribution to my retirement plan; returns are reinvested.',
+  'Unit trust savings plan, returns reviewed every year with my adviser.',
+  'Pension contribution as agreed with my adviser.',
+  '',
 ]
 
 export const CHANGED_DETAILS_TEXTS = [

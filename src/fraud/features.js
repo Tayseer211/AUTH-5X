@@ -1,3 +1,4 @@
+import { normalizeRecipientBank } from '../data/recipientBanks.js'
 import { LANGUAGE_PATTERNS } from './checks.js'
 import { initiatedHour, isBaselineTransaction } from './profile.js'
 import { zonedParts } from '../utils/time.js'
@@ -146,7 +147,8 @@ function rawFeatures(request, baseline, profile, timeZone) {
     frequency: request.frequency,
     recipient: request.recipient,
     recipientAccount: request.recipientAccount ?? null,
-    recipientBank: request.recipientBank ?? null,
+    // Canonical code (SAME_BANK…); display labels from older requests are mapped.
+    recipientBank: normalizeRecipientBank(request.recipientBank),
     channel: context.channel ?? null,
     deviceId: context.deviceId ?? null,
     initiatedAt: new Date(initiatedAt).toISOString(),

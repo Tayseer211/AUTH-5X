@@ -125,14 +125,21 @@ describe('generateDataset — reproducibility', () => {
 })
 
 describe('generateDataset — unusual is not fraud', () => {
-  test('legitimate-but-unusual examples exist and each departs from the norm', () => {
+  test('legitimate-but-unusual examples exist and (almost) all depart from the norm', () => {
     const unusual = ofClass('legit_unusual')
     assert.ok(unusual.length > 0)
-    for (const record of unusual) {
-      assert.equal(record.labels.isFraud, false)
-      assert.ok(record.derived.riskSignalCount >= 1, `${record.standingOrderId} (${record.labels.scenario}) has no risk signal`)
-    }
+    for (const record of unusual) assert.equal(record.labels.isFraud, false)
+    // Incidental noise can occasionally undo a scenario's one departure (e.g.
+    // a generic description replacing a mismatched one).
+    const departing = unusual.filter((record) => record.derived.riskSignalCount >= 1).length
+    assert.ok(departing / unusual.length >= 0.97, `${departing}/${unusual.length}`)
     assert.ok(new Set(unusual.map((record) => record.labels.scenario)).size >= 6)
+  })
+
+  test('some legitimate requests carry several warning signals at once', () => {
+    const legitimate = records.filter((record) => !record.labels.isFraud)
+    assert.ok(legitimate.filter((record) => record.derived.riskSignalCount >= 3).length >= 10)
+    assert.ok(legitimate.some((record) => record.derived.riskSignalCount >= 5))
   })
 
   test('each common fraud signal also appears on legitimate requests', () => {
@@ -151,8 +158,18 @@ describe('generateDataset — fraud', () => {
     assert.ok(new Set(fraudulent.map((record) => record.labels.scenario)).size >= 5)
   })
 
-  test('each fraudulent example combines at least two risk signals', () => {
-    for (const record of fraudulent) assert.ok(record.derived.riskSignalCount >= 2, `${record.standingOrderId} (${record.labels.scenario})`)
+  test('risk-signal counts of fraud and legitimate requests overlap', () => {
+    const legitimate = records.filter((record) => !record.labels.isFraud)
+    const maxLegit = Math.max(...legitimate.map((record) => record.derived.riskSignalCount))
+    const minFraud = Math.min(...fraudulent.map((record) => record.derived.riskSignalCount))
+    assert.ok(minFraud < maxLegit, `fraud ≥ ${minFraud}, legitimate ≤ ${maxLegit}`)
+    assert.ok(fraudulent.filter((record) => record.derived.riskSignalCount <= 3).length >= 5)
+  })
+
+  test('some fraud looks routine: no scam wording, known device, usual hours', () => {
+    const quiet = fraudulent.filter((record) => record.derived.textRiskTermCount === 0 && !record.derived.newDevice && !record.derived.unusualHour)
+    assert.ok(quiet.length >= 10, `${quiet.length} quiet fraud records`)
+    assert.ok(new Set(quiet.map((record) => record.labels.scenario)).size >= 3)
   })
 
   test('no single signal defines fraud', () => {

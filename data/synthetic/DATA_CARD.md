@@ -12,7 +12,7 @@
 | Setting | A fictional Mauritian retail bank; amounts in MUR, times in `Indian/Mauritius` |
 | Generator | `src/fraud/synthetic/` (version recorded in `manifest.json`) |
 | Regenerate | `npm run data:generate` (see [Regenerating](#regenerating-the-dataset)) |
-| Status | Prototype / training resource for Stage 2 |
+| Status | Prototype / training resource. Generator 2.0.0 (Stage 3.1): see [Changes in 2.0.0](#changes-in-generator-200-stage-31) |
 
 ## Why synthetic data
 
@@ -117,9 +117,9 @@ Each record has three label fields, kept apart from the features:
 | Class | Meaning | `isFraud` |
 |---|---|---|
 | `legit_normal` | Consistent with the user's established behaviour. | always false |
-| `legit_unusual` | Genuine but unusual for this user: one or two departures from the norm (large amount, new device, late at night, new payee, urgent wording…). | always false |
+| `legit_unusual` | Genuine but unusual for this user: departures from the norm (large amount, new device, late at night, new payee, urgent wording…) — sometimes several at once, and sometimes with the links, security or investment vocabulary and pressure wording scams also use. | always false |
 | `suspicious` | Several risk signals; fraud is not certain. | drawn per record with probability `suspiciousFraudShare` (default 0.35) |
-| `fraudulent` | Combinations of strong indicators following a known scam pattern. | always true |
+| `fraudulent` | A known scam pattern. Usually a combination of indicators, but every pattern also has quiet variants that look routine (no scam wording, known device, usual amount). | always true |
 
 For `suspicious` records whose drawn outcome is fraud, the generator adds one
 extra weak signal half of the time, so the two outcomes overlap heavily but are
@@ -146,22 +146,32 @@ as input features (they would leak the answer).
 | `frequency_restructure` | `legit_unusual` | An existing monthly payment switched to weekly instalments of the same yearly total. |
 | `payment_day_moved` | `legit_unusual` | An existing payment moved to a day of the month the user does not normally pay on (e.g. a new salary date). |
 | `branch_setup` | `legit_unusual` | A new payee added and paid by standing order in person at a branch, rather than through the user's usual digital channel. |
-| `urgent_wording_legit` | `legit_unusual` | A genuine payment whose note uses urgent wording ("today", "before 15:00") — pressure language without a scam. |
+| `urgent_wording_legit` | `legit_unusual` | A genuine payment whose note uses urgent, threatening or "no need to call" wording ("today", "service will be suspended", "no need to contact me") — pressure language without a scam. |
 | `recent_beneficiary_everyday` | `legit_unusual` | A new everyday payee added minutes before the standing order, at a normal amount from a known device. |
 | `mixed_reference_legit` | `legit_unusual` | An existing payee paid under a reference that names a different kind of service (a property manager also billing garden upkeep). |
+| `ebill_link_setup` | `legit_unusual` | A genuine biller's e-bill "pay by standing order" link: the request arrives through an emailed link, sometimes quoting the link. *(2.0.0)* |
+| `bank_advised_account_move` | `legit_unusual` | After a genuine fraud alert, the customer moves their savings to a newly opened account on the bank's advice: new payee, large amount, often a new phone, recent beneficiary and security wording — every hallmark of an impersonation scam, but genuine. *(2.0.0)* |
+| `new_investment_plan` | `legit_unusual` | A new, genuine pension or unit-trust plan: a new payee with investment wording, often mentioning returns, set up normally. *(2.0.0)* |
+| `life_event_multi_signal` | `legit_unusual` | A genuine request around a life event (moving house, new job, studies abroad) that departs from the norm on two to four axes at once. *(2.0.0)* |
 | `changed_account_details` | `suspicious` | An existing payee's name with a different account number, following a "bank details have changed" message. Genuine account changes and redirection scams look alike. |
 | `lookalike_payee` | `suspicious` | A new payee whose name closely resembles an existing one ("Ltd" vs "Limited", one changed letter), at the existing amount. |
 | `weak_signal_combo` | `suspicious` | A new payee plus two or three individually weak departures (somewhat higher amount, edge-of-hours, off-cycle day, recent beneficiary, new device). |
 | `new_payee_new_device` | `suspicious` | A new payee set up from an unrecognised device at a moderately elevated amount. |
 | `mild_pressure_wording` | `suspicious` | A new payee for a deposit or booking with mild time-pressure wording, otherwise set up normally. |
 | `frequency_spike` | `suspicious` | A new payee paid weekly or daily — a schedule the user does not use — in small individual amounts. |
-| `bank_impersonation` | `fraudulent` | The user is talked into paying a security-themed "safe account" by someone posing as the bank: new payee, large amount, pressure wording, often via an emailed link. |
-| `account_takeover` | `fraudulent` | Someone else in control of the account: unrecognised device, often at night, payee added minutes earlier, large amount to a personal or shell account, bland wording. |
-| `invoice_redirection` | `fraudulent` | A known supplier impersonated — same or look-alike name, new account, raised amount, "updated bank details" wording, sometimes a mismatched reference. |
-| `investment_scam` | `fraudulent` | The user, on their own device and at their usual time, sets up large payments to a fake investment scheme promising returns. |
+| `bank_impersonation` | `fraudulent` | Someone posing as the bank talks the user into paying a "safe account": new payee, large amount, recently added. Written instructions carry pressure, links or security wording; when the victim is coached by phone (40%) the request carries only their own bland note, and the payee may be a personal or generic-looking account rather than a security-themed name. |
+| `account_takeover` | `fraudulent` | Someone else in control of the account: usually an unrecognised device (25% the user's own, via remote access), often at night, payee added minutes earlier, a large or moderately raised amount to a personal or shell account, bland wording. |
+| `invoice_redirection` | `fraudulent` | A known supplier impersonated — same or look-alike name, new account, often a raised amount and "updated bank details" wording, sometimes a mismatched reference; quiet variants keep the usual amount and carry no note about the change. |
+| `investment_scam` | `fraudulent` | The user, on their own device and at their usual time, sets up large payments to a fake investment scheme — often promising returns, sometimes under a respectable-sounding fund name and wording copied from genuine plans. |
 | `frequency_drain` | `fraudulent` | Many smaller daily or weekly payments to a new payee, draining far more per year than the user's usual commitments. |
-| `mimic_routine` | `fraudulent` | Dressed up as a routine bill — monthly, usual payment day, usual hours, business-like name and wording — but a brand-new payee at several times the usual amount, added shortly before. |
-| `weak_signal_stack` | `fraudulent` | No single strong indicator, but four or five weak ones at once (higher amount, edge hours, off-cycle day, new device, recent beneficiary, odd schedule, pressure wording, overseas bank). |
+| `mimic_routine` | `fraudulent` | Dressed up as a routine bill — monthly, usual payment day, usual hours, business-like name and wording — but a brand-new payee, at an amount anywhere from inside the user's usual range to several times it, added hours to days before. |
+| `weak_signal_stack` | `fraudulent` | No single strong indicator, but three to five weak ones at once (higher amount, edge hours, off-cycle day, new device, recent beneficiary, odd schedule, pressure wording, overseas bank). |
+
+Every scenario's request then passes through **incidental noise** applied at the
+same rates to every class (`applyIncidentalNoise` in `scenarios.js`): 20% get a
+generic description ("Monthly payment") unless the note quotes the description,
+5% come from a replaced/new device, 6% are submitted an hour or two outside the
+user's usual hours. These are ordinary, fraud-unrelated departures.
 
 ## Features
 
@@ -195,7 +205,7 @@ Nullable fields are `null` when the history cannot support a value (for example
 | `frequency` | category | Payment schedule. |
 | `recipient` | string | Payee name as entered (fictional). |
 | `recipientAccount` | string, nullable | Last four digits of the payee account (fictional). |
-| `recipientBank` | category, nullable | Where the payee account is held. |
+| `recipientBank` | category, nullable | Where the payee account is held: canonical code `SAME_BANK`, `OTHER_LOCAL_BANK` or `OVERSEAS_BANK` (`src/data/recipientBanks.js`; display labels such as "Another local bank" are mapped to codes). |
 | `channel` | category, nullable | Channel the request was made through. |
 | `deviceId` | string, nullable | Opaque ID of the device used; null for branch requests. |
 | `initiatedAt` | datetime | When the request was submitted (ISO 8601, UTC). |
@@ -291,9 +301,13 @@ in `checks.js`) plus two extra patterns; the raw `requestText`,
 | `ruleEngineRiskLevel` | Its band: `LOW`, `MEDIUM` or `HIGH`. |
 
 These are for comparison only. Do not train on them or treat them as targets.
-In the default dataset the rule engine rates only 57 of 160 fraudulent requests
-`HIGH`, and rates changed-account-detail redirections as safe (median score 95) because
-the rules cannot see account numbers. That gap is what the ML stage is for.
+In the default dataset (generator 2.0.0) the rule engine rates only 37 of 160
+fraudulent requests `HIGH`, rates changed-account-detail requests as safe (median
+score 95) and invoice redirections close to safe (median 85) because the rules
+cannot see account numbers, and puts 183 of 400 genuine-but-unusual requests in
+its `MEDIUM` or `HIGH` band. The model trained on this dataset, and its
+comparison with the rule engine, are described in
+[`models/MODEL_CARD.md`](../../models/MODEL_CARD.md).
 
 ## Files
 
@@ -324,6 +338,16 @@ records):
 | `suspicious` | 240 | 12% (87 labelled fraud) |
 | `fraudulent` | 160 | 8% |
 | **Labelled fraud overall** | **247** | **12.35%** |
+
+Records per scenario (default dataset, generator 2.0.0; `npm run data:audit`
+prints this):
+
+| Class | Scenarios (records) |
+|---|---|
+| `legit_normal` | `routine_existing_payee` 418, `routine_known_biller` 272, `new_payee_everyday` 273, `amount_adjustment` 237 |
+| `legit_unusual` | `new_payee_large_planned` 51, `large_payment_known_payee` 41, `new_device_routine` 39, `late_night_routine` 31, `frequency_restructure` 29, `recent_beneficiary_everyday` 29, `life_event_multi_signal` 29, `urgent_wording_legit` 26, `payment_day_moved` 24, `branch_setup` 23, `mixed_reference_legit` 23, `new_investment_plan` 21, `ebill_link_setup` 20, `bank_advised_account_move` 14 |
+| `suspicious` | `weak_signal_combo` 49 (18 fraud), `changed_account_details` 48 (18), `mild_pressure_wording` 41 (17), `new_payee_new_device` 40 (13), `lookalike_payee` 34 (11), `frequency_spike` 28 (10) |
+| `fraudulent` | `account_takeover` 35, `bank_impersonation` 34, `mimic_routine` 26, `investment_scam` 21, `invoice_redirection` 16, `frequency_drain` 16, `weak_signal_stack` 12 |
 
 **These proportions are a design choice, not a measurement.** Real standing-order
 fraud is far rarer than 12%; the dataset over-samples fraud and hard cases so a
@@ -364,6 +388,39 @@ recalibrate scores to real prevalence.
 - **Features shared with the rules.** Several derived flags mirror the rule
   engine's checks, so comparisons between the model and the rules on this data
   are not fully independent.
+- **Fraud always involves a new or changed payee.** Every suspicious and
+  fraudulent request goes to a payee added or changed within the lookback
+  (`beneficiaryAddedMinutesBefore` is never null for them, but null for 77% of
+  `legit_normal` requests). That is broadly how push-payment fraud works, but
+  real fraud to long-established payees (e.g. after weeks of grooming) exists
+  and is not modelled.
+- **Signals are strong, not perfect.** No single value is (almost) always fraud,
+  but some remain strongly fraud-associated because scams really do use them
+  (bank-impersonation wording is fraud in 79% of the requests that carry it) —
+  their exact strength is still an authoring choice.
+- **Short histories are out of range.** Synthetic users have 66–398 settled
+  transactions over six months; a real new customer (or the app's demo
+  account, 18 transactions) is outside that range.
+
+## Changes in generator 2.0.0 (Stage 3.1)
+
+The Stage 3 model evaluation found that some features revealed the label
+because of how 1.0.0 built records, not because they are realistic fraud
+signals. 2.0.0 fixes the generator (rather than deleting the features) and
+aligns bank values with the app.
+
+| Problem in 1.0.0 | Fix in 2.0.0 |
+|---|---|
+| The app stored `"Same bank"` / `"Another local bank"` while the dataset used `SAME_BANK` / `OTHER_LOCAL_BANK`, so app requests were out of vocabulary for the model and `overseasRecipient` could never fire for them. | One canonical representation in `src/data/recipientBanks.js`, shared by the demo requests, `extractFeatures` (which also maps legacy labels), the generator and the model. The UI still shows the labels. |
+| A missing `referenceCategory` occurred only in fraud (168/0); a missing `payeeCategory` never in legitimate classes. | 15% of business payees get a generic name ("Corail Enterprises"), 15% of persona payees a generic description, and incidental noise genericises 20% of request descriptions — in every class. |
+| Security-themed payee names, `SECURITY` / `INVESTMENT` categories, emailed links, threats, "don't call", credential and bank-impersonation wording, and promised returns occurred only in fraud. | Genuine alarm/home-protection and pension/unit-trust payees; genuine e-bill links (`ebill_link_setup`); a genuine customer moving savings on the bank's advice (`bank_advised_account_move`); genuine supplier notices, "no need to call me" notes and plan-returns wording. Fraud is quieter: phone-coached impersonation with no scam text and non-security payee names, remote-access takeovers from the user's own device, redirections at the usual amount with no note, legitimate-sounding fund names. |
+| `riskSignalCount` split the classes: `legit_normal` ≤ 2, `fraudulent` ≥ 3. | `life_event_multi_signal` (2–4 genuine departures), incidental noise, and routine-sized `mimic_routine` / `weak_signal_stack` with 3 signals. Now `legit_normal` 0–3, `legit_unusual` 0–6, `fraudulent` 1–10. |
+
+Checked by `npm run data:audit` and the realism tests
+(`src/fraud/synthetic/realism.test.js`): no model-input value seen at least 15
+times is fraud at least 97% of the time, no single column has a ROC-AUC outside
+0.03–0.97 on its own, and every scam-associated flag also appears on genuine
+requests.
 
 ## Appropriate use
 
@@ -388,6 +445,8 @@ npm run data:generate -- --mix legit_normal=0.5,legit_unusual=0.25,suspicious=0.
 npm run data:generate -- --suspicious-fraud-share 0.5 --history-months 12
 npm run data:generate -- --out path/to/dir --with-history
 npm run data:generate -- --help
+npm run data:audit                                   # shortcut audit of the default dataset
+npm run data:audit -- --data data/synthetic/generated   # …or of generated files
 ```
 
 The same options and seed always give the same files. The generator can also be

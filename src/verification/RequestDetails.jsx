@@ -1,5 +1,6 @@
 import { StatusBadge } from '../components/Feedback.jsx'
 import { getBank } from '../data/banks.js'
+import { recipientBankLabel } from '../data/recipientBanks.js'
 import {
   CHANNEL_LABELS,
   FREQUENCY_LABELS,
@@ -15,7 +16,7 @@ function RequestDetails({ tx, user }) {
   const channel = CHANNEL_LABELS[tx.context?.channel] ?? 'Online banking'
   const rows = [
     ['Recipient', tx.recipient],
-    ['Recipient account', `•••• ${tx.recipientAccount} (${tx.recipientBank})`],
+    ['Recipient account', `•••• ${tx.recipientAccount} (${recipientBankLabel(tx.recipientBank)})`],
     ['Amount', formatMoney(tx.amount)],
     ['Frequency', FREQUENCY_LABELS[tx.frequency]],
     ['Requested date', formatDate(tx.date, { long: true })],

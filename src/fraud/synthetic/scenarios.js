@@ -1,12 +1,20 @@
 import {
+  BANK_ADVISED_TEXTS,
   BLAND_TEXTS,
   CHANGED_DETAILS_TEXTS,
+  EBILL_TEXTS,
   EVERYDAY_CATEGORIES,
+  GENERIC_DESCRIPTIONS,
+  GENERIC_SUFFIXES,
   IMPERSONATION_TEXTS,
   INVESTMENT_TEXTS,
   LARGE_LEGIT_TEXTS,
+  LEGIT_NOTICE_TEXTS,
+  LEGIT_RETURNS_TEXTS,
   LEGIT_URGENT_TEXTS,
   MILD_PRESSURE_TEXTS,
+  NAME_STEMS,
+  NO_CALLBACK_TEXTS,
   PAYEE_CATEGORIES,
   PLANNED_LARGE_CATEGORIES,
   ROUTINE_TEXTS,
@@ -23,14 +31,18 @@ import { createPayee, newAccount, newDeviceId, roundAmount, typicalAmount } from
 // amount, frequency, timing, device, channel and wording — from the user's
 // persona and derived profile. The four classes deliberately overlap:
 //   legit_normal     consistent with the user's established behaviour;
-//   legit_unusual    genuine, but with one or two departures from the norm
-//                    (so a model cannot learn "unusual = fraud");
+//   legit_unusual    genuine, but departing from the norm — sometimes on
+//                    several axes at once, and sometimes with the same
+//                    wording, links or payee vocabulary scams use (so a model
+//                    cannot learn "unusual = fraud");
 //   suspicious       several risk signals, outcome uncertain — the fraud
 //                    label is drawn per record (see generator.js);
-//   fraudulent       combinations of strong indicators, following distinct
-//                    scam patterns, some of which look routine on the surface.
+//   fraudulent       distinct scam patterns. Many carry strong indicators,
+//                    but each pattern also has quiet variants that look
+//                    routine: no scam wording, known device, usual amount.
 // No scenario sets a score or outcome for the fraud engine; scores are
-// computed from the resulting request.
+// computed from the resulting request. applyIncidentalNoise adds everyday,
+// fraud-unrelated departures at the same rate to every class.
 
 export const RISK_CLASSES = ['legit_normal', 'legit_unusual', 'suspicious', 'fraudulent']
 
@@ -160,6 +172,32 @@ const mulePayee = (ctx) => ({
   bank: ctx.rng.weighted({ OTHER_LOCAL_BANK: 0.85, OVERSEAS_BANK: 0.15 }),
   category: null,
 })
+
+// A new business payee whose name says nothing about what it does.
+function genericPayee(ctx) {
+  const taken = new Set(knownNames(ctx).map((name) => name.toLowerCase()))
+  let name
+  do name = `${ctx.rng.pick(NAME_STEMS)} ${ctx.rng.pick(GENERIC_SUFFIXES)}`
+  while (taken.has(name.toLowerCase()))
+  return { name, account: newAccount(ctx.rng), bank: ctx.rng.weighted({ SAME_BANK: 0.3, OTHER_LOCAL_BANK: 0.6, OVERSEAS_BANK: 0.1 }), category: null }
+}
+
+// Everyday departures that have nothing to do with fraud — a replaced phone,
+// a late evening, a generic description — applied at the same rates to every
+// class, so none of them is a label.
+export const INCIDENTAL_RATES = { genericDescription: 0.2, newDevice: 0.05, edgeHour: 0.06 }
+
+export function applyIncidentalNoise(ctx, spec) {
+  const { rng } = ctx
+  let next = spec
+  // Only where the note does not quote the description, to keep them consistent.
+  if (rng.chance(INCIDENTAL_RATES.genericDescription) && !(next.requestText ?? '').includes(next.description)) {
+    next = { ...next, description: rng.pick(GENERIC_DESCRIPTIONS) }
+  }
+  if (next.deviceId && rng.chance(INCIDENTAL_RATES.newDevice)) next = { ...next, deviceId: newDeviceId(rng) }
+  if (rng.chance(INCIDENTAL_RATES.edgeHour)) next = { ...next, hour: edgeHour(ctx) }
+  return next
+}
 
 // Individually weak departures from the norm, applied in combination.
 const WEAK_SIGNALS = {
@@ -355,12 +393,13 @@ export const SCENARIOS = [
     id: 'urgent_wording_legit',
     riskClass: 'legit_unusual',
     weight: 1,
-    description: 'A genuine payment whose note uses urgent wording ("today", "before 15:00") — pressure language without a scam.',
+    description: 'A genuine payment whose note uses urgent, threatening or "no need to call" wording ("today", "service will be suspended", "no need to contact me") — pressure language without a scam.',
     build(ctx) {
       const spec = ctx.rng.chance(0.5)
         ? { ...fromOrder(ctx, ctx.rng.pick(ctx.persona.standingOrders)), ...normalTiming(ctx) }
         : { ...everydayNewPayee(ctx), ...normalTiming(ctx), beneficiaryAddedMinutesBefore: daysAgo(ctx, 1, 20) }
-      return { ...spec, requestText: fill(ctx, ctx.rng.pick(LEGIT_URGENT_TEXTS), spec) }
+      const texts = ctx.rng.weighted([[LEGIT_URGENT_TEXTS, 0.45], [LEGIT_NOTICE_TEXTS, 0.35], [NO_CALLBACK_TEXTS, 0.2]])
+      return { ...spec, requestText: fill(ctx, ctx.rng.pick(texts), spec) }
     },
   },
   {
@@ -382,6 +421,83 @@ export const SCENARIOS = [
       const order = ctx.rng.pick(ctx.persona.standingOrders)
       const spec = { ...fromOrder(ctx, order), ...normalTiming(ctx), description: otherCategoryDescription(ctx, order.category) }
       return { ...spec, requestText: routineText(ctx, spec) }
+    },
+  },
+  {
+    id: 'ebill_link_setup',
+    riskClass: 'legit_unusual',
+    weight: 1,
+    description: 'A genuine biller\'s e-bill "pay by standing order" link: the request arrives through an emailed link, sometimes quoting the link.',
+    build(ctx) {
+      const known = ctx.rng.chance(0.6) ? ctx.rng.pick(ctx.persona.billPayees) : null
+      const base = known
+        ? { payee: known.payee, amount: roundAmount(known.typicalAmount * ctx.rng.float(0.9, 1.15)), frequency: 'MONTHLY', dayOfMonth: usualDay(ctx), description: known.description, paymentReference: reference(ctx, known.category) }
+        : { ...everydayNewPayee(ctx), beneficiaryAddedMinutesBefore: minutesAgo(ctx, 10, 3 * MINUTES_PER_DAY) }
+      const spec = { ...normalTiming(ctx), ...base, channel: 'EMAIL_LINK' }
+      return { ...spec, requestText: fill(ctx, ctx.rng.pick(EBILL_TEXTS), spec) }
+    },
+  },
+  {
+    id: 'bank_advised_account_move',
+    riskClass: 'legit_unusual',
+    weight: 0.6,
+    description: 'After a genuine fraud alert, the customer moves their savings to a newly opened account on the bank\'s advice: new payee, large amount, often a new phone, recent beneficiary and security wording — every hallmark of an impersonation scam, but genuine.',
+    build(ctx) {
+      const { rng } = ctx
+      const payee = { ...newPayee(ctx, 'SAVINGS'), bank: rng.weighted({ SAME_BANK: 0.6, OTHER_LOCAL_BANK: 0.4 }) }
+      const spec = {
+        payee,
+        amount: roundAmount(soMax(ctx) * rng.float(1.5, 4)),
+        frequency: rng.chance(0.6) ? 'MONTHLY' : 'ONE_OFF',
+        dayOfMonth: usualDay(ctx),
+        description: rng.pick(PAYEE_CATEGORIES.SAVINGS.descriptions),
+        paymentReference: null,
+        ...normalTiming(ctx),
+        beneficiaryAddedMinutesBefore: minutesAgo(ctx, 10, 600),
+      }
+      if (rng.chance(0.5)) spec.deviceId = newDeviceId(rng)
+      return { ...spec, requestText: rng.pick(BANK_ADVISED_TEXTS) }
+    },
+  },
+  {
+    id: 'new_investment_plan',
+    riskClass: 'legit_unusual',
+    weight: 1,
+    description: 'A new, genuine pension or unit-trust plan: a new payee with investment wording, often mentioning returns, set up normally.',
+    build(ctx) {
+      const spec = {
+        payee: newPayee(ctx, 'INVESTMENT_PLAN'),
+        amount: roundAmount(Math.max(soMin(ctx), soMax(ctx) * ctx.rng.float(0.6, 2))),
+        frequency: 'MONTHLY',
+        dayOfMonth: usualDay(ctx),
+        description: ctx.rng.pick(PAYEE_CATEGORIES.INVESTMENT_PLAN.descriptions),
+        paymentReference: reference(ctx, 'INVESTMENT_PLAN'),
+        ...normalTiming(ctx),
+        beneficiaryAddedMinutesBefore: daysAgo(ctx, 1, 20),
+      }
+      return { ...spec, requestText: ctx.rng.pick(LEGIT_RETURNS_TEXTS) }
+    },
+  },
+  {
+    id: 'life_event_multi_signal',
+    riskClass: 'legit_unusual',
+    weight: 1.5,
+    description: 'A genuine request around a life event (moving house, new job, studies abroad) that departs from the norm on two to four axes at once: new payee plus a higher amount, new device, odd hours, off-cycle day, recent beneficiary, other schedule, overseas bank or pressure wording.',
+    build(ctx) {
+      const category = ctx.rng.pick([...PLANNED_LARGE_CATEGORIES, ...EVERYDAY_CATEGORIES])
+      const base = {
+        payee: newPayee(ctx, category),
+        amount: roundAmount(Math.max(soMin(ctx), typicalAmount(ctx.rng, category, ctx.persona.incomeFactor))),
+        frequency: 'MONTHLY',
+        dayOfMonth: usualDay(ctx),
+        description: ctx.rng.pick(PAYEE_CATEGORIES[category].descriptions),
+        paymentReference: reference(ctx, category),
+        ...normalTiming(ctx),
+        beneficiaryAddedMinutesBefore: daysAgo(ctx, 1, 20),
+      }
+      const withText = { ...base, requestText: routineText(ctx, base, ctx.rng.chance(0.5) ? LARGE_LEGIT_TEXTS : ROUTINE_TEXTS, 0.4) }
+      const names = ['higherAmount', 'edgeHour', 'offDay', 'newDevice', 'recentBeneficiary', 'otherFrequency', 'overseas', 'pressureWording']
+      return applyWeakSignals(ctx, withText, names, ctx.rng.int(2, 4))
     },
   },
 
@@ -483,27 +599,35 @@ export const SCENARIOS = [
     id: 'bank_impersonation',
     riskClass: 'fraudulent',
     weight: 2,
-    description: 'The user is talked into paying a security-themed "safe account" by someone posing as the bank: new payee, large amount, pressure wording, often via an emailed link.',
+    description: 'Someone posing as the bank talks the user into paying a "safe account": new payee, large amount, recently added. Written instructions carry pressure, links or security wording; when the victim is coached by phone the request carries only their own bland note, and the payee may be a personal or generic-looking account rather than a security-themed name.',
     build(ctx) {
       const { rng } = ctx
-      const payee = { name: securityThemedName(rng), account: newAccount(rng), bank: rng.weighted({ OTHER_LOCAL_BANK: 0.8, OVERSEAS_BANK: 0.2 }), category: null }
+      const kind = rng.weighted({ security: 0.45, mule: 0.3, generic: 0.25 })
+      const payee =
+        kind === 'security'
+          ? { name: securityThemedName(rng), account: newAccount(rng), bank: rng.weighted({ OTHER_LOCAL_BANK: 0.7, SAME_BANK: 0.1, OVERSEAS_BANK: 0.2 }), category: null }
+          : kind === 'mule'
+            ? mulePayee(ctx)
+            : genericPayee(ctx)
+      const coachedByPhone = rng.chance(0.4)
       const spec = {
         payee,
         amount: fraudAmount(ctx, Math.max(soMax(ctx) * rng.float(2, 8), rng.float(15000, 80000) * ctx.persona.incomeFactor)),
         frequency: rng.weighted({ WEEKLY: 0.5, MONTHLY: 0.35, DAILY: 0.15 }),
         dayOfMonth: null,
-        description: rng.pick(['Account protection settlement', 'Security holding transfer', 'Verification deposit']),
-        paymentReference: `REF-${rng.digits(6)}`,
+        description: coachedByPhone || rng.chance(0.3) ? rng.pick(['Savings transfer', 'Transfer to new account', ...GENERIC_DESCRIPTIONS]) : rng.pick(['Account protection settlement', 'Security holding transfer', 'Verification deposit']),
+        paymentReference: rng.chance(0.5) ? `REF-${rng.digits(6)}` : null,
         ...normalTiming(ctx),
-        channel: rng.chance(0.65) ? 'EMAIL_LINK' : ctx.persona.usualChannel,
+        channel: !coachedByPhone && rng.chance(0.6) ? 'EMAIL_LINK' : ctx.persona.usualChannel,
         beneficiaryAddedMinutesBefore: minutesAgo(ctx, 2, 60),
       }
-      if (rng.chance(0.55)) spec.deviceId = newDeviceId(rng)
-      if (rng.chance(0.5)) spec.hour = oddHour(ctx)
+      if (rng.chance(0.45)) spec.deviceId = newDeviceId(rng)
+      if (rng.chance(0.4)) spec.hour = oddHour(ctx)
+      if (coachedByPhone) return { ...spec, requestText: fill(ctx, rng.pick(BLAND_TEXTS), spec) }
 
       const t = IMPERSONATION_TEXTS
-      // A minority are "clean": no pressure, threat or link at all.
-      const extras = rng.chance(0.15) ? [] : rng.sample([t.pressure, t.bypass, t.link, t.sensitive], rng.int(1, 3)).map((pool) => rng.pick(pool))
+      // Some written instructions are "clean": no pressure, threat or link.
+      const extras = rng.chance(0.25) ? [] : rng.sample([t.pressure, t.bypass, t.link, t.sensitive], rng.int(1, 3)).map((pool) => rng.pick(pool))
       return { ...spec, requestText: fill(ctx, [rng.pick(t.opener), rng.pick(t.body), ...extras].join(' '), spec) }
     },
   },
@@ -511,19 +635,20 @@ export const SCENARIOS = [
     id: 'account_takeover',
     riskClass: 'fraudulent',
     weight: 2,
-    description: 'Someone else in control of the account: unrecognised device, often at night, payee added minutes earlier, large amount to a personal or shell account, bland wording.',
+    description: 'Someone else in control of the account: usually an unrecognised device (sometimes the user\'s own, via remote access), often at night, payee added minutes earlier, a large or moderately raised amount to a personal or shell account, bland wording.',
     build(ctx) {
       const { rng } = ctx
       const payee = rng.chance(0.6) ? mulePayee(ctx) : { ...newPayee(ctx, rng.pick(EVERYDAY_CATEGORIES)), bank: rng.weighted({ OTHER_LOCAL_BANK: 0.85, OVERSEAS_BANK: 0.15 }) }
       const spec = {
         payee,
-        amount: fraudAmount(ctx, soMax(ctx) * rng.float(2, 8)),
+        amount: fraudAmount(ctx, soMax(ctx) * (rng.chance(0.3) ? rng.float(1.1, 1.8) : rng.float(2, 8))),
         frequency: rng.weighted({ MONTHLY: 0.4, WEEKLY: 0.4, DAILY: 0.2 }),
         dayOfMonth: null,
         description: rng.pick(['Payment', 'Transfer', 'Services', 'Monthly']),
         paymentReference: null,
         ...normalTiming(ctx),
-        deviceId: newDeviceId(rng),
+        // Remote-access takeovers use the victim's own device.
+        deviceId: rng.chance(0.25) ? rng.pick(ctx.persona.devices) : newDeviceId(rng),
         hour: rng.chance(0.6) ? oddHour(ctx, { night: true }) : usualHour(ctx),
         beneficiaryAddedMinutesBefore: minutesAgo(ctx, 1, 30),
       }
@@ -534,7 +659,7 @@ export const SCENARIOS = [
     id: 'invoice_redirection',
     riskClass: 'fraudulent',
     weight: 1.5,
-    description: 'A known supplier impersonated — same or look-alike name, new account, raised amount, "updated bank details" wording, sometimes a mismatched reference.',
+    description: 'A known supplier impersonated — same or look-alike name, new account, often a raised amount and "updated bank details" wording, sometimes a mismatched reference; quiet variants keep the usual amount and carry no note about the change.',
     applicable: hasBusinessOrder,
     build(ctx) {
       const { rng } = ctx
@@ -549,11 +674,14 @@ export const SCENARIOS = [
         ...fromOrder(ctx, order),
         ...normalTiming(ctx),
         payee,
-        amount: roundAmount(order.amount * rng.float(1.2, 3)),
+        amount: roundAmount(order.amount * (rng.chance(0.5) ? rng.float(1, 1.08) : rng.float(1.2, 3))),
         beneficiaryAddedMinutesBefore: minutesAgo(ctx, 10, 720),
       }
       if (rng.chance(0.3)) spec.description = otherCategoryDescription(ctx, order.category)
       if (rng.chance(0.3)) spec.deviceId = newDeviceId(rng)
+      const style = rng.weighted({ changedDetails: 0.55, routine: 0.3, none: 0.15 })
+      if (style === 'none') return { ...spec, requestText: '' }
+      if (style === 'routine') return { ...spec, requestText: routineText(ctx, spec, ROUTINE_TEXTS, 0) }
       const urgency = rng.chance(0.4) ? ' Payment is overdue, please settle urgently.' : ''
       return { ...spec, requestText: fill(ctx, rng.pick(CHANGED_DETAILS_TEXTS), spec) + urgency }
     },
@@ -562,11 +690,14 @@ export const SCENARIOS = [
     id: 'investment_scam',
     riskClass: 'fraudulent',
     weight: 1.5,
-    description: 'The user, on their own device and at their usual time, sets up large payments to a fake investment scheme promising returns.',
+    description: 'The user, on their own device and at their usual time, sets up large payments to a fake investment scheme — often promising returns, sometimes under a respectable-sounding fund name and wording copied from genuine plans.',
     build(ctx) {
       const { rng } = ctx
+      const payee = rng.chance(0.6)
+        ? { name: investmentName(rng), account: newAccount(rng), bank: rng.weighted({ OTHER_LOCAL_BANK: 0.6, OVERSEAS_BANK: 0.4 }), category: null }
+        : { ...newPayee(ctx, 'INVESTMENT_PLAN'), bank: rng.weighted({ OTHER_LOCAL_BANK: 0.6, OVERSEAS_BANK: 0.4 }) }
       const spec = {
-        payee: { name: investmentName(rng), account: newAccount(rng), bank: rng.weighted({ OTHER_LOCAL_BANK: 0.6, OVERSEAS_BANK: 0.4 }), category: null },
+        payee,
         amount: fraudAmount(ctx, soMax(ctx) * rng.float(2, 10)),
         frequency: rng.weighted({ MONTHLY: 0.5, WEEKLY: 0.4, ONE_OFF: 0.1 }),
         dayOfMonth: usualDay(ctx),
@@ -576,6 +707,9 @@ export const SCENARIOS = [
         beneficiaryAddedMinutesBefore: minutesAgo(ctx, 30, 2 * MINUTES_PER_DAY),
       }
       const t = INVESTMENT_TEXTS
+      const style = rng.weighted({ pitch: 0.55, copied: 0.25, none: 0.2 })
+      if (style === 'none') return { ...spec, requestText: '' }
+      if (style === 'copied') return { ...spec, requestText: rng.pick(LEGIT_RETURNS_TEXTS) }
       return { ...spec, requestText: [rng.pick(t.pitch), rng.pick(t.pressure)].filter(Boolean).join(' ') }
     },
   },
@@ -606,21 +740,21 @@ export const SCENARIOS = [
     id: 'mimic_routine',
     riskClass: 'fraudulent',
     weight: 1.5,
-    description: 'Dressed up as a routine bill — monthly, usual payment day, usual hours, business-like name and wording — but a brand-new payee at several times the usual amount, added shortly before.',
+    description: 'Dressed up as a routine bill — monthly, usual payment day, usual hours, business-like name and wording — but a brand-new payee, at an amount anywhere from inside the user\'s usual range to several times it, added hours to days before.',
     build(ctx) {
       const { rng } = ctx
       const category = rng.pick(['PROPERTY', 'SERVICES', 'INSURANCE', 'TELECOM'])
       const spec = {
         payee: newPayee(ctx, category),
-        amount: roundAmount(soMax(ctx) * rng.float(2.5, 6)),
+        amount: roundAmount(soMax(ctx) * (rng.chance(0.5) ? rng.float(0.6, 1.6) : rng.float(2.5, 6))),
         frequency: 'MONTHLY',
         dayOfMonth: usualDay(ctx),
         description: rng.chance(0.4) ? otherCategoryDescription(ctx, category) : rng.pick(PAYEE_CATEGORIES[category].descriptions),
         paymentReference: reference(ctx, category),
         ...normalTiming(ctx),
-        beneficiaryAddedMinutesBefore: minutesAgo(ctx, 15, 1380),
+        beneficiaryAddedMinutesBefore: rng.chance(0.5) ? daysAgo(ctx, 1, 10) : minutesAgo(ctx, 15, 1380),
       }
-      if (rng.chance(0.5)) spec.deviceId = newDeviceId(rng)
+      if (rng.chance(0.3)) spec.deviceId = newDeviceId(rng)
       return { ...spec, requestText: routineText(ctx, spec, ROUTINE_TEXTS, 0.2) }
     },
   },
@@ -628,11 +762,11 @@ export const SCENARIOS = [
     id: 'weak_signal_stack',
     riskClass: 'fraudulent',
     weight: 1,
-    description: 'No single strong indicator, but four or five weak ones at once (higher amount, edge hours, off-cycle day, new device, recent beneficiary, odd schedule, pressure wording, overseas bank).',
+    description: 'No single strong indicator, but three to five weak ones at once (higher amount, edge hours, off-cycle day, new device, recent beneficiary, odd schedule, pressure wording, overseas bank).',
     build(ctx) {
       const base = { ...everydayNewPayee(ctx), ...normalTiming(ctx), beneficiaryAddedMinutesBefore: daysAgo(ctx, 1, 10) }
       const names = ['higherAmount', 'edgeHour', 'offDay', 'newDevice', 'recentBeneficiary', 'otherFrequency', 'pressureWording', 'overseas']
-      const spec = applyWeakSignals(ctx, { ...base, requestText: routineText(ctx, base, ROUTINE_TEXTS, 0.5) }, names, ctx.rng.int(4, 5))
+      const spec = applyWeakSignals(ctx, { ...base, requestText: routineText(ctx, base, ROUTINE_TEXTS, 0.5) }, names, ctx.rng.int(3, 5))
       return spec
     },
   },

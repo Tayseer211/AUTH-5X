@@ -3,7 +3,7 @@ import { extractFeatures } from '../features.js'
 import { deriveUserProfile, isBaselineTransaction } from '../profile.js'
 import { APP_TIMEZONE, addMonths, daysInMonth, zonedDate, zonedParts } from '../../utils/time.js'
 import { createRng } from './random.js'
-import { RISK_CLASSES, SCENARIOS, escalate } from './scenarios.js'
+import { RISK_CLASSES, SCENARIOS, applyIncidentalNoise, escalate } from './scenarios.js'
 import { createHistory, createPersona } from './users.js'
 
 // Synthetic standing-order dataset generator.
@@ -17,7 +17,9 @@ import { createHistory, createPersona } from './users.js'
 // random choice comes from a stream seeded by `config.seed`, so the same
 // config always regenerates the same dataset.
 
-export const GENERATOR_VERSION = '1.0.0'
+// 2.0.0 (Stage 3.1): canonical recipient-bank codes shared with the app,
+// fewer label-revealing artefacts (see DATA_CARD.md, "Changes in 2.0.0").
+export const GENERATOR_VERSION = '2.0.0'
 
 export const DEFAULT_CONFIG = {
   seed: 'fraud-auth-stage2',
@@ -188,6 +190,8 @@ function createRecord(config, users, riskClass, index) {
 
   let spec = scenario.build(ctx)
   if (riskClass === 'suspicious' && isFraud && rng.chance(0.5)) spec = escalate(ctx, spec)
+  // Same rates for every class, from its own stream.
+  spec = applyIncidentalNoise({ ...ctx, rng: rng.fork('noise') }, spec)
 
   const standingOrderId = `SYN-SO-${String(index + 1).padStart(6, '0')}`
   const request = toRequest(spec, standingOrderId, rng, config)

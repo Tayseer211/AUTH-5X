@@ -96,6 +96,15 @@ describe('extractFeatures — hand-built ledger', () => {
     assert.equal(derived.annualisedAmount, 182500)
   })
 
+  test('recipient bank is stored as a canonical code, whether given as code or display label', () => {
+    for (const [value, code] of [['OVERSEAS_BANK', 'OVERSEAS_BANK'], ['Overseas bank', 'OVERSEAS_BANK'], ['Another local bank', 'OTHER_LOCAL_BANK'], ['Same bank', 'SAME_BANK']]) {
+      const { raw, derived } = features({ recipientBank: value })
+      assert.equal(raw.recipientBank, code, value)
+      assert.equal(derived.overseasRecipient, code === 'OVERSEAS_BANK', value)
+    }
+    assert.equal(features({}).raw.recipientBank, null)
+  })
+
   test('does not modify its inputs', () => {
     const input = request({})
     const snapshot = structuredClone({ input, history, profile })
@@ -119,6 +128,8 @@ describe('extractFeatures — app demo requests', () => {
     assert.equal(derived.securityThemedRecipientName, true)
     assert.equal(derived.textUrgency, true)
     assert.equal(byCase.LEGITIMATE.derived.riskSignalCount, 0)
+    assert.equal(byCase.LEGITIMATE.raw.recipientBank, 'SAME_BANK')
+    assert.equal(byCase.GREY.raw.recipientBank, 'OTHER_LOCAL_BANK')
   })
 
   test('ignores the demo verificationCase label', () => {
