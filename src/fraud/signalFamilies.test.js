@@ -6,15 +6,21 @@ import { MODEL_FEATURES } from './ml/featureSpec.js'
 import {
   BEHAVIOUR_ANOMALY_FLAGS,
   ENGINE_CHECK_FAMILIES,
+  EVIDENCE_FIELD_FACTS,
   EVIDENCE_FIELD_FAMILIES,
   FAMILIES,
+  MESSAGE_INTENT_FACTS,
   MESSAGE_SIGNALS,
+  MODEL_FEATURE_DESCRIPTIONS,
   MODEL_FEATURE_FAMILIES,
+  TRANSACTION_PROFILE_FLAGS,
   behaviourAnomalies,
   engineFindingTopic,
+  evidenceSignalFact,
   evidenceSignalFamily,
   evidenceSignalTopic,
   messageSignalTopic,
+  transactionProfileFlags,
 } from './signalFamilies.js'
 import { SIGNALS } from './text/classifier.js'
 import { LANGUAGE_PATTERNS } from './text/patterns.js'
@@ -61,6 +67,38 @@ describe('signal families — completeness', () => {
     for (const flag of Object.keys(BEHAVIOUR_ANOMALY_FLAGS)) assert.ok(derived.has(flag), flag)
     assert.deepEqual(behaviourAnomalies({ derived: { newDevice: true, unusualHour: false, nightTime: true } }), ['nightTime', 'newDevice'])
     assert.deepEqual(behaviourAnomalies(null), [])
+  })
+})
+
+describe('signal families — Stage 6 registries', () => {
+  test('every model feature has a plain-language description, with no internal names', () => {
+    assert.deepEqual(Object.keys(MODEL_FEATURE_DESCRIPTIONS).sort(), MODEL_FEATURES.map((feature) => feature.name).sort())
+    for (const [name, text] of Object.entries(MODEL_FEATURE_DESCRIPTIONS)) {
+      assert.ok(text.length > 5, name)
+      assert.doesNotMatch(text, /[A-Z]|_|=|logit|feature|column/, name)
+    }
+  })
+
+  test('every compared evidence field has a payment fact; amount and currency share one', () => {
+    const contradictionFields = Object.entries(EVIDENCE_FIELD_FAMILIES).filter(([, family]) => family === 'contradiction').map(([field]) => field)
+    assert.deepEqual(Object.keys(EVIDENCE_FIELD_FACTS).sort(), contradictionFields.sort())
+    assert.equal(evidenceSignalFact('amount.mismatch'), evidenceSignalFact('currency.mismatch'))
+    assert.equal(evidenceSignalFact('sender.claim'), null)
+  })
+
+  test('message intent facts refer to real classifier signals and payment facts', () => {
+    const facts = new Set(Object.values(EVIDENCE_FIELD_FACTS))
+    for (const [intent, intentFacts] of Object.entries(MESSAGE_INTENT_FACTS)) {
+      assert.ok(intent in SIGNALS, intent)
+      for (const fact of intentFacts) assert.ok(facts.has(fact), `${intent}: ${fact}`)
+    }
+  })
+
+  test('profile flags are real derived features with plain-language reasons', () => {
+    const derived = new Set(DERIVED_FEATURES.map((feature) => feature.name))
+    for (const flag of Object.keys(TRANSACTION_PROFILE_FLAGS)) assert.ok(derived.has(flag), flag)
+    assert.deepEqual(transactionProfileFlags({ derived: { recipientAccountChanged: true, lookalikeRecipient: false } }), ['recipientAccountChanged'])
+    assert.deepEqual(transactionProfileFlags(null), [])
   })
 })
 

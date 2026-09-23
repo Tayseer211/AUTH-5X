@@ -72,11 +72,14 @@ describe('assessStandingOrder — with text', () => {
     assert.equal(combinedAssessment.verification.recommended, false)
   })
 
-  test('suspicious message on a review-level request stays MEDIUM and names the conflict', () => {
+  // Stage 4/5 gave MEDIUM here. Since Stage 6 (hybrid-2), three families
+  // present at once (a review-level transaction, a suspicious message and a
+  // strong contradiction) is HIGH.
+  test('suspicious message on a review-level request with a contradiction is HIGH and names the conflict', () => {
     const { combinedAssessment, textAnalysis } = assess('GREY', SUSPICIOUS_TEXT)
     assert.equal(textAnalysis.classification, 'suspicious')
-    assert.equal(combinedAssessment.level, 'MEDIUM')
-    assert.deepEqual(combinedAssessment.rules, ['transaction.medium', 'message', 'contradiction'])
+    assert.equal(combinedAssessment.level, 'HIGH')
+    assert.deepEqual(combinedAssessment.rules, ['all.families', 'transaction.medium', 'message', 'contradiction'])
     assert.deepEqual(combinedAssessment.families, { transaction: 'MODERATE', message: 'MODERATE', contradiction: 'STRONG' })
     assert.ok(combinedAssessment.reasons.some((reason) => reason.source === 'evidence' && reason.signal === 'account.mismatch' && reason.tone === 'bad'))
     assert.match(combinedAssessment.verification.steps[0], /Confirm the payee and account details/)
@@ -250,7 +253,8 @@ describe('hybrid-1 — demo and scenario regression', () => {
     const result = hybrid(BORDERLINE, BORDERLINE_TEXT)
     assert.equal(result.transactionAnalysis.riskLevel, 'MEDIUM')
     assert.equal(result.transactionAnalysis.checks.find((check) => check.id === 'language').score, 0)
-    assert.deepEqual(result.risk.transactionRisk.rulesExcludingLanguage, { score: 90, level: 'LOW' })
+    // Language neutralised: 25 + 10 + 20 + 25·0.66 + 15 + 5 = 91.5.
+    assert.deepEqual(result.risk.transactionRisk.rulesExcludingLanguage, { score: 92, level: 'LOW' })
     assert.equal(result.textAnalysis.classification, 'fraudulent')
     // Stage 4 turned "fraudulent message + MEDIUM engine" into HIGH.
     assert.equal(result.combinedAssessment.level, 'MEDIUM')
@@ -347,8 +351,8 @@ describe('hybrid-1 — behaviour, missing evidence, snapshots', () => {
     const result = assessStandingOrder({ request, profile, text: request.requestText, userBank: 'MCB', analysis: fixedAnalysis(DEMO.FRAUD), history, model: DEFAULT_MODEL })
     assert.deepEqual({ history, request, profile }, snapshot)
     assert.deepEqual(JSON.parse(JSON.stringify(result)), result)
-    assert.equal(result.version, 'assessment-2.0.0')
-    assert.equal(result.policy, 'hybrid-1')
+    assert.equal(result.version, 'assessment-2.1.0')
+    assert.equal(result.policy, 'hybrid-2')
     assert.doesNotMatch(JSON.stringify(result.combinedAssessment), /probability of fraud|fraud probability:/i)
   })
 })

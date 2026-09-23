@@ -181,8 +181,8 @@ describe('pending standing-order flow — Stage 5 snapshot', () => {
     for (const [key, [estimate, band, level]] of Object.entries(expected)) {
       const tx = analysed(ledger, key)
       const { assessment } = tx
-      assert.equal(assessment.version, 'assessment-2.0.0')
-      assert.equal(assessment.policy, 'hybrid-1')
+      assert.equal(assessment.version, 'assessment-2.1.0')
+      assert.equal(assessment.policy, 'hybrid-2')
       assert.equal(assessment.asOf, tx.analysis.analysedAt, key)
       assert.equal(assessment.mlAnalysis.asOf, assessment.asOf, key)
       assert.deepEqual([assessment.mlAnalysis.estimate, assessment.mlAnalysis.band], [estimate, band], key)

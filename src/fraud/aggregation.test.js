@@ -44,7 +44,7 @@ describe('engine parity', () => {
     assert.deepEqual(ENGINE_LEVEL_CUTOFFS, { low: 85, medium: 40 })
   })
 
-  test('the rules baseline drops only the language check and uses the engine’s weighting', () => {
+  test('the rules baseline neutralises only the language check and keeps the engine’s weighting', () => {
     const analysis = {
       checks: [
         { id: 'amount', weight: 25, score: 1 },
@@ -55,10 +55,28 @@ describe('engine parity', () => {
         { id: 'expected', weight: 5, score: 1 },
       ],
     }
-    const baseline = rulesExcludingLanguage(analysis)
-    assert.deepEqual(baseline.checks, ['amount', 'frequency', 'recipient', 'behaviour', 'expected'])
-    assert.equal(baseline.score, 90)
-    assert.equal(baseline.level, 'LOW')
+    // Language treated as passed: 25 + 10 + 20 + 25·0.66 + 15 + 5 = 91.5.
+    assert.deepEqual(rulesExcludingLanguage(analysis), { score: 92, level: 'LOW', neutralised: 'language' })
+    // A passing language check changes nothing: the baseline equals the
+    // engine's own score, so dropping-and-reweighting cannot inflate risk.
+    const passing = { checks: analysis.checks.map((check) => (check.id === 'language' ? { ...check, score: 1 } : check)) }
+    assert.equal(rulesExcludingLanguage(passing).score, 92)
+  })
+
+  test('the rules baseline is never below the engine score (Stage 6 fix)', () => {
+    // Engine 87 with a clean language check: dropping language re-weighted the
+    // other penalties to 84 (MEDIUM) in Stage 5; neutralising keeps 87 (LOW).
+    const analysis = {
+      checks: [
+        { id: 'amount', weight: 25, score: 0.48 },
+        { id: 'frequency', weight: 10, score: 1 },
+        { id: 'recipient', weight: 20, score: 1 },
+        { id: 'behaviour', weight: 25, score: 1 },
+        { id: 'language', weight: 15, score: 1 },
+        { id: 'expected', weight: 5, score: 1 },
+      ],
+    }
+    assert.deepEqual(rulesExcludingLanguage(analysis), { score: 87, level: 'LOW', neutralised: 'language' })
   })
 })
 
@@ -82,7 +100,7 @@ describe('transaction family: rules and model are one vote', () => {
 
   test('rules MEDIUM with a HIGH model is still one family: MEDIUM on its own', () => {
     const result = run({ rules: 'MEDIUM', band: 'HIGH' })
-    assert.deepEqual(transactionFamily('MEDIUM', 'HIGH'), { strength: 'STRONG', strengthened: true })
+    assert.deepEqual(transactionFamily('MEDIUM', 'HIGH'), { strength: 'STRONG', strengthened: true, profileFlags: [] })
     assert.equal(result.level, 'MEDIUM')
     assert.deepEqual(result.rules, ['transaction.medium'])
   })
@@ -121,6 +139,44 @@ describe('message and contradiction are separate families', () => {
   })
 })
 
+describe('hybrid-2 rules (Stage 6)', () => {
+  const withFacts = (strength, facts) => ({ ...message(strength), facts })
+  const conflictOn = (...strongFacts) => ({ strength: 'STRONG', strongConflicts: strongFacts.length, weakConflicts: 0, strongFacts, weakFacts: [] })
+
+  test('H6: all three families present is HIGH', () => {
+    const result = run({ rules: 'MEDIUM', msg: withFacts('MODERATE', ['account']), con: conflictOn('account') })
+    assert.equal(result.level, 'HIGH')
+    assert.ok(result.rules.includes('all.families'))
+    // Without the transaction family it is not.
+    assert.equal(run({ rules: 'LOW', msg: withFacts('MODERATE', ['account']), con: conflictOn('account') }).level, 'MEDIUM')
+  })
+
+  test('H7: a suspicious message plus a contradiction on an independent fact is HIGH', () => {
+    // A PIN request (no payment fact) and a different amount: independent.
+    const independent = run({ rules: 'LOW', msg: withFacts('MODERATE', []), con: conflictOn('amount') })
+    assert.equal(independent.level, 'HIGH')
+    assert.ok(independent.rules.includes('message+independentContradiction'))
+    // "Our account has changed" plus the account contradiction: one fact, told twice.
+    const sameFact = run({ rules: 'LOW', msg: withFacts('MODERATE', ['account', 'bank', 'payee']), con: conflictOn('account') })
+    assert.equal(sameFact.level, 'MEDIUM')
+    assert.ok(!sameFact.rules.includes('message+independentContradiction'))
+  })
+
+  test('M4: a profile check makes the transaction family MODERATE, never a separate vote', () => {
+    const flagged = { strength: 'MODERATE', strengthened: false, profileFlags: ['recipientAccountChanged'] }
+    assert.deepEqual(transactionFamily('LOW', null, ['recipientAccountChanged']), flagged)
+    const result = aggregate({ engineLevel: 'LOW', rulesLevel: 'LOW', transaction: flagged, message: NONE_MESSAGE, contradiction: NONE_CONTRADICTION })
+    assert.equal(result.level, 'MEDIUM')
+    assert.deepEqual(result.rules, ['transaction.profile'])
+    // A profile check and the rules together are still one family.
+    assert.equal(transactionFamily('MEDIUM', null, ['lookalikeRecipient']).strength, 'MODERATE')
+    // With a HIGH model band it is strengthened, like a MEDIUM rules result.
+    assert.equal(transactionFamily('LOW', 'HIGH', ['lookalikeRecipient']).strength, 'STRONG')
+    // Without a profile check the model still cannot act on a LOW request.
+    assert.equal(transactionFamily('LOW', 'HIGH', []).strength, 'NONE')
+  })
+})
+
 describe('compatibility floor', () => {
   test('the final level is never below the original engine level', () => {
     const held = run({ rules: 'LOW', engine: 'MEDIUM' })
@@ -148,7 +204,9 @@ describe('family summaries', () => {
     assert.equal(messageFamily({ classification: 'suspicious', intents: [] }, null).strength, 'MODERATE')
     assert.equal(messageFamily({ classification: 'fraudulent', intents: [] }, null).strength, 'STRONG')
     const lookalike = { signals: [{ id: 'link.lookalike', category: 'SUSPICIOUS', tone: 'bad' }] }
-    assert.deepEqual(messageFamily({ classification: 'legit_normal', intents: [] }, lookalike), { strength: 'MODERATE', classification: 'legit_normal', corroboratedSuspicious: 1 })
+    assert.deepEqual(messageFamily({ classification: 'legit_normal', intents: [] }, lookalike), { strength: 'MODERATE', classification: 'legit_normal', corroboratedSuspicious: 1, facts: [] })
+    // The facts the message's own warnings are about.
+    assert.deepEqual(messageFamily({ classification: 'suspicious', intents: ['changedPaymentDetails', 'newPaymentDestination', 'urgency'] }, null).facts, ['account', 'bank', 'payee'])
     // Code words in a warning are not a request unless the classifier agrees.
     const codes = { signals: [{ id: 'sensitive.request', category: 'SUSPICIOUS', tone: 'bad' }] }
     assert.equal(messageFamily({ classification: 'legit_normal', intents: [] }, codes).strength, 'NONE')
@@ -156,17 +214,29 @@ describe('family summaries', () => {
   })
 
   test('contradiction family', () => {
-    assert.deepEqual(contradictionFamily(null), NONE_CONTRADICTION)
+    assert.deepEqual(contradictionFamily(null), { ...NONE_CONTRADICTION, strongFacts: [], weakFacts: [] })
     const evidence = {
       signals: [
-        { category: 'CONFLICT', tone: 'warn' },
-        { category: 'MATCH', tone: 'ok' },
-        { category: 'SUSPICIOUS', tone: 'bad' },
+        { id: 'bank.mismatch', category: 'CONFLICT', tone: 'warn' },
+        { id: 'amount.match', category: 'MATCH', tone: 'ok' },
+        { id: 'link.lookalike', category: 'SUSPICIOUS', tone: 'bad' },
       ],
     }
-    assert.deepEqual(contradictionFamily(evidence), { strength: 'WEAK', strongConflicts: 0, weakConflicts: 1 })
-    evidence.signals.push({ category: 'CONFLICT', tone: 'bad' })
-    assert.deepEqual(contradictionFamily(evidence), { strength: 'STRONG', strongConflicts: 1, weakConflicts: 1 })
+    assert.deepEqual(contradictionFamily(evidence), { strength: 'WEAK', strongConflicts: 0, weakConflicts: 1, strongFacts: [], weakFacts: ['bank'] })
+    evidence.signals.push({ id: 'account.mismatch', category: 'CONFLICT', tone: 'bad' })
+    assert.deepEqual(contradictionFamily(evidence), { strength: 'STRONG', strongConflicts: 1, weakConflicts: 1, strongFacts: ['account'], weakFacts: ['bank'] })
+  })
+
+  test('one currency difference is one contradicted fact, not two (Stage 6 fix)', () => {
+    const evidence = {
+      signals: [
+        { id: 'amount.mismatch', category: 'CONFLICT', tone: 'bad' },
+        { id: 'currency.mismatch', category: 'CONFLICT', tone: 'bad' },
+      ],
+    }
+    const family = contradictionFamily(evidence)
+    assert.deepEqual([family.strongConflicts, family.strongFacts], [1, ['amount']])
+    assert.equal(run({ rules: 'LOW', con: family }).level, 'MEDIUM')
   })
 
   test('every fired rule is documented and the policy never reads the clock', () => {

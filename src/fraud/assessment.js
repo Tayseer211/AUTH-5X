@@ -1,6 +1,7 @@
 import {
   HYBRID_RULES,
   POLICY_VERSION,
+  RULE_FAMILIES,
   aggregate,
   contradictionFamily,
   isUncorroboratedSensitiveMention,
@@ -12,7 +13,15 @@ import {
 import { ENGINE_INFO, RISK_LEVELS, analyseStandingOrder } from './engine.js'
 import { extractFeatures } from './features.js'
 import { inputsAsOf, transactionModelEstimate } from './ml/explain.js'
-import { behaviourAnomalies } from './signalFamilies.js'
+import {
+  ENGINE_LANGUAGE_CHECK,
+  MODEL_FEATURE_DESCRIPTIONS,
+  TRANSACTION_PROFILE_FLAGS,
+  behaviourAnomalies,
+  evidenceSignalFamily,
+  modelFeatureGroup,
+  transactionProfileFlags,
+} from './signalFamilies.js'
 import { CLASSIFIER_VERSION, classifyMessage } from './text/classifier.js'
 import { compareTextEvidence } from './text/evidence.js'
 
@@ -34,7 +43,9 @@ import { compareTextEvidence } from './text/evidence.js'
 //                         contradiction) and behaviour, as summarised for the
 //                         policy;
 //   combinedAssessment  — the final LOW / MEDIUM / HIGH level with the rules
-//                         that set it, reasons, mitigating and supporting
+//                         that set it, `drivers` (each deciding rule with the
+//                         reasons behind it, every one taken from a source
+//                         analysis), reasons, mitigating and supporting
 //                         information, and verification steps.
 //
 // Each analysis is returned exactly as its component produced it. There is no
@@ -48,7 +59,8 @@ import { compareTextEvidence } from './text/evidence.js'
 // ledger history), the model estimate is absent or unavailable and the rest of
 // the assessment is unaffected.
 
-export const ASSESSMENT_VERSION = 'assessment-2.0.0'
+// 2.1.0 (Stage 6): policy hybrid-2, profile checks, drivers, model factors.
+export const ASSESSMENT_VERSION = 'assessment-2.1.0'
 
 // The policy's rules, for display and tests.
 export const ASSESSMENT_RULES = HYBRID_RULES
@@ -137,7 +149,69 @@ function modelSupport(mlAnalysis, rulesLevel, agreement, strengthened) {
       : `Model and transaction rules disagree: the model gives a ${band} estimate, the rules rate the transaction ${RISK_LEVELS[rulesLevel].label.toLowerCase()}. Shown for information; the model does not change the level on its own.`,
     MODEL_LOWER: `Model and transaction rules disagree: the model gives a ${band} estimate. The rules’ assessment is kept; the model never lowers it.`,
   }[agreement]
-  return [{ source: 'model', tone: agreement === 'MODEL_HIGHER' ? 'warn' : null, text }]
+  return [{ source: 'model', tone: agreement === 'MODEL_HIGHER' ? 'warn' : null, text }, ...modelFactors(mlAnalysis)]
+}
+
+const MODEL_FACTOR_COUNT = 3
+
+// The transaction factors that raised an elevated or high model estimate most,
+// in plain language (the logistic model's exact per-feature contributions).
+// Wording features are left out: the model is scored without the message.
+function modelFactors(mlAnalysis) {
+  if (mlAnalysis.band === 'LOW') return []
+  const factors = mlAnalysis.contributions
+    .filter((item) => item.logit > 0 && modelFeatureGroup(item.feature)?.family === 'transaction')
+    .slice(0, MODEL_FACTOR_COUNT)
+    .map((item) => MODEL_FEATURE_DESCRIPTIONS[item.feature])
+  return factors.length ? [{ source: 'model', tone: null, text: `Factors that raised the model estimate most: ${factors.join('; ')}.` }] : []
+}
+
+// --- Profile checks -----------------------------------------------------------
+
+function profileReasons(profileFlags) {
+  return profileFlags.map((flag) => ({ source: 'profile', signal: flag, tone: 'warn', text: TRANSACTION_PROFILE_FLAGS[flag] }))
+}
+
+// --- Drivers --------------------------------------------------------------------
+
+const DRIVER_REASONS_PER_FAMILY = 4
+
+// One reason from each family in turn, so a rule that rests on several
+// families shows evidence from every one of them even where the list is
+// shortened for display.
+function interleave(lists) {
+  const merged = []
+  const longest = Math.max(0, ...lists.map((list) => list.length))
+  for (let i = 0; i < longest; i += 1) for (const list of lists) if (i < list.length) merged.push(list[i])
+  return [...new Set(merged)]
+}
+
+// Each rule that set the final level, with the reasons behind it. Every reason
+// is the text of a finding or signal from a source analysis, so each driver
+// can be traced back to the evidence that produced it.
+function decisionDrivers({ level, fired, floorApplied, transactionAnalysis, profile, text, evidence, supporting, strengthened }) {
+  const engineFindings = (filter) =>
+    transactionAnalysis.checks.filter(filter).flatMap((check) => check.findings.filter((finding) => finding.tone !== 'ok').map((finding) => finding.text))
+  const byFamily = {
+    transaction: [
+      ...engineFindings((check) => check.id !== ENGINE_LANGUAGE_CHECK),
+      ...profile.map((reason) => reason.text),
+      ...(strengthened ? supporting.filter((item) => item.tone === 'warn').map((item) => item.text) : []),
+    ],
+    message: [
+      ...text.map((reason) => reason.text),
+      ...evidence.filter((reason) => evidenceSignalFamily(reason.signal) === 'message').map((reason) => reason.text),
+    ],
+    contradiction: evidence.filter((reason) => reason.category === 'CONFLICT').map((reason) => reason.text),
+    engine: engineFindings(() => true),
+  }
+  const deciding = fired.filter((id) => (id === 'compatibility.floor' ? floorApplied : HYBRID_RULES[id].level === level))
+  return deciding.map((rule) => ({
+    rule,
+    text: HYBRID_RULES[rule].text,
+    families: RULE_FAMILIES[rule],
+    reasons: interleave(RULE_FAMILIES[rule].map((family) => byFamily[family].slice(0, DRIVER_REASONS_PER_FAMILY))),
+  }))
 }
 
 // --- Entry point ------------------------------------------------------------
@@ -153,7 +227,10 @@ function modelSupport(mlAnalysis, rulesLevel, agreement, strengthened) {
 //                      (read as of `asOf`);
 //   model            — optional prepared fraud model (ml/explain.js
 //                      prepareModel, e.g. ml/defaultModel.js).
-export function assessStandingOrder({ request, profile, text = null, userBank = null, analysis = null, history = null, model = null }) {
+export function assessStandingOrder({ request: input, profile, text = null, userBank = null, analysis = null, history = null, model = null }) {
+  // A request whose requestText is not a string (malformed input) is read as
+  // having no request text, rather than reaching components that expect one.
+  const request = input.requestText == null || typeof input.requestText === 'string' ? input : { ...input, requestText: null }
   const transactionAnalysis = analysis ?? analyseStandingOrder(request, profile)
   const asOf = transactionAnalysis.analysedAt
   const hasText = typeof text === 'string' && text.trim().length > 0
@@ -174,7 +251,8 @@ export function assessStandingOrder({ request, profile, text = null, userBank = 
   // Families.
   const engineLevel = transactionAnalysis.riskLevel
   const rules = rulesExcludingLanguage(transactionAnalysis)
-  const transaction = transactionFamily(rules.level, modelBand)
+  const profileFlags = features ? transactionProfileFlags(features) : []
+  const transaction = transactionFamily(rules.level, modelBand, profileFlags)
   const message = messageFamily(textAnalysis, evidenceAnalysis)
   const contradiction = contradictionFamily(evidenceAnalysis)
   const agreement = mlAnalysis ? modelAgreement(rules.level, modelBand) : 'UNAVAILABLE'
@@ -182,7 +260,12 @@ export function assessStandingOrder({ request, profile, text = null, userBank = 
   const anomalies = features ? behaviourAnomalies(features) : null
 
   const risk = {
-    transactionRisk: { engine: { score: transactionAnalysis.score, level: engineLevel }, rulesExcludingLanguage: { score: rules.score, level: rules.level }, strength: transaction.strength },
+    transactionRisk: {
+      engine: { score: transactionAnalysis.score, level: engineLevel },
+      rulesExcludingLanguage: { score: rules.score, level: rules.level },
+      profileFlags,
+      strength: transaction.strength,
+    },
     mlRisk: { band: modelBand, agreement, strengthened: transaction.strengthened },
     behaviouralRisk: { anomalies, countedIn: 'transaction' },
     messageRisk: message,
@@ -193,11 +276,25 @@ export function assessStandingOrder({ request, profile, text = null, userBank = 
     },
   }
 
-  const parts = [transactionReasons(transactionAnalysis), textReasons(textAnalysis), evidenceReasons(evidenceAnalysis, textAnalysis)]
+  const textPart = textReasons(textAnalysis)
+  const evidencePart = evidenceReasons(evidenceAnalysis, textAnalysis)
+  const profilePart = profileReasons(profileFlags)
+  const parts = [transactionReasons(transactionAnalysis), { reasons: profilePart, mitigating: [] }, textPart, evidencePart]
   const reasons = parts.flatMap((part) => part.reasons).sort(byTone)
   const mitigating = parts.flatMap((part) => part.mitigating)
   const supporting = modelSupport(mlAnalysis, rules.level, agreement, transaction.strengthened)
   const steps = verificationSteps(level, textAnalysis, evidenceAnalysis)
+  const drivers = decisionDrivers({
+    level,
+    fired,
+    floorApplied: compatibilityFloor.applied,
+    transactionAnalysis,
+    profile: profilePart,
+    text: [...textPart.reasons].sort(byTone),
+    evidence: [...evidencePart.reasons].sort(byTone),
+    supporting,
+    strengthened: transaction.strengthened,
+  })
 
   const deciding = fired.filter((id) => HYBRID_RULES[id].level === level).map((id) => HYBRID_RULES[id].text)
   const outcome = compatibilityFloor.applied
@@ -206,7 +303,7 @@ export function assessStandingOrder({ request, profile, text = null, userBank = 
       ? `Level raised from ${engineLevel} to ${level} by: ${deciding.join(' ')}`
       : `Level ${level}.${deciding.length ? ` ${deciding.join(' ')}` : ''}`
   const summary = [
-    `Transaction rules: ${rules.level} (${rules.score}/100 without the language check; original engine ${transactionAnalysis.score}/100, ${engineLevel}).`,
+    `Transaction rules: ${rules.level} (${rules.score}/100 with the language check neutralised; original engine ${transactionAnalysis.score}/100, ${engineLevel}).`,
     mlAnalysis
       ? mlAnalysis.status === 'AVAILABLE'
         ? `Model estimate: ${mlAnalysis.band} (synthetic-trained; not calibrated to real-world fraud rates).`
@@ -248,6 +345,7 @@ export function assessStandingOrder({ request, profile, text = null, userBank = 
       raisedByTextOrEvidence: level !== engineLevel,
       rules: fired,
       families: { transaction: transaction.strength, message: message.strength, contradiction: contradiction.strength },
+      drivers,
       reasons,
       mitigating,
       supporting,

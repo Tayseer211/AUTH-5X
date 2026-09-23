@@ -3,9 +3,22 @@ import Button from '../components/Button.jsx'
 import { Alert } from '../components/Feedback.jsx'
 import { WARNING_SOURCE_LABELS, decisionWarnings } from './decisionState.js'
 
+function WarningList({ warnings }) {
+  return (
+    <ul className="fa-decision__warnings">
+      {warnings.map((warning) => (
+        <li key={warning.id}>
+          {warning.text}
+          {warning.sources.length > 1 && ` (reported by: ${warning.sources.map((source) => WARNING_SOURCE_LABELS[source]).join(', ')})`}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 // Approve / request info / reject, gated by the risk level (the combined
 // assessment level when there is one, otherwise the engine's level):
-//   LOW    — approve directly
+//   LOW    — approve directly (any points worth a look are listed first)
 //   MEDIUM — approve only after acknowledging the listed warnings
 //   HIGH   — approval is not offered
 function DecisionPanel({ analysis, assessment, onApprove, onRequestInfo, onReject, error, busy }) {
@@ -27,10 +40,20 @@ function DecisionPanel({ analysis, assessment, onApprove, onRequestInfo, onRejec
         {title}
       </h2>
 
-      {riskLevel === 'LOW' && (
+      {riskLevel === 'LOW' && warnings.length === 0 && (
         <p className="fa-decision__text">
           Every check matched your usual activity. Approving sets up the standing order on your simulated account.
         </p>
+      )}
+
+      {riskLevel === 'LOW' && warnings.length > 0 && (
+        <>
+          <p className="fa-decision__text">
+            The overall risk is low, but a few points are worth a look before you approve. Approving sets up the standing
+            order on your simulated account.
+          </p>
+          <WarningList warnings={warnings} />
+        </>
       )}
 
       {riskLevel === 'MEDIUM' && (
@@ -39,15 +62,7 @@ function DecisionPanel({ analysis, assessment, onApprove, onRequestInfo, onRejec
             Most checks passed, but some details don&apos;t match your usual pattern. That doesn&apos;t mean the request
             is fraudulent — check these points before you decide.
           </p>
-          <ul className="fa-decision__warnings">
-            {warnings.map((warning) => (
-              <li key={warning.id}>
-                {warning.text}
-                {warning.sources.length > 1 &&
-                  ` (reported by: ${warning.sources.map((source) => WARNING_SOURCE_LABELS[source]).join(', ')})`}
-              </li>
-            ))}
-          </ul>
+          <WarningList warnings={warnings} />
           <label className="fa-checkbox fa-decision__ack">
             <input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} />
             <span>I have checked these points with the recipient through a channel I trust.</span>

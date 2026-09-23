@@ -20,10 +20,10 @@ export function awaitingDecision(tx) {
 // topic are kept as they are.
 
 // When a concern has several sources, the first available of these supplies
-// the wording: the engine's finding, then the evidence sentence, then the
-// message signal.
-const SOURCE_PREFERENCE = ['transaction', 'evidence', 'text']
-export const WARNING_SOURCE_LABELS = { transaction: 'transaction checks', text: 'message analysis', evidence: 'evidence check' }
+// the wording: the engine's finding, then a payee history check, then the
+// evidence sentence, then the message signal.
+const SOURCE_PREFERENCE = ['transaction', 'profile', 'evidence', 'text']
+export const WARNING_SOURCE_LABELS = { transaction: 'transaction checks', profile: 'payee history check', text: 'message analysis', evidence: 'evidence check' }
 const TONE_RANK = { bad: 2, warn: 1, ok: 0 }
 
 // Warnings for the decision panel: one entry per concern,

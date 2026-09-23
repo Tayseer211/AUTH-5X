@@ -4,7 +4,7 @@ import { createDemoRequests } from '../data/demoCases.js'
 import { createSeedTransactions } from '../data/seedTransactions.js'
 import { approveTransaction, rejectTransaction, requestMoreInformation, saveAnalysis } from '../transactions/ledger.js'
 import { assessPendingRequest } from '../transactions/requestAssessment.js'
-import { awaitingDecision, decisionWarnings } from './decisionState.js'
+import { WARNING_SOURCE_LABELS, awaitingDecision, decisionWarnings } from './decisionState.js'
 
 // 23 Sep 2026, 12:00 in Mauritius.
 const NOW = new Date('2026-09-23T08:00:00Z')
@@ -115,5 +115,14 @@ describe('decisionWarnings', () => {
     const snapshot = structuredClone(analysis)
     assert.deepEqual(decisionWarnings(analysis, null), [{ id: 'text:Same text', text: 'Same text', tone: 'bad', sources: ['transaction'] }])
     assert.deepEqual(analysis, snapshot)
+  })
+
+  test('a payee history check (Stage 6) is listed as its own warning', () => {
+    const tx = find(analysedLedger({ LEGITIMATE: { recipient: 'ABC Service Ltd', requestText: '' } }), 'LEGITIMATE')
+    assert.equal(tx.assessment.combined.level, 'MEDIUM')
+    const warning = warningsFor(tx).find((item) => item.sources.includes('profile'))
+    assert.ok(warning, 'payee history warning listed')
+    assert.match(warning.text, /closely resembles/)
+    assert.equal(WARNING_SOURCE_LABELS.profile, 'payee history check')
   })
 })

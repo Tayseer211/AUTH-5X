@@ -1,7 +1,7 @@
 import { RiskBadge } from '../components/Feedback.jsx'
 import { HYBRID_RULES } from '../fraud/aggregation.js'
 import { RISK_LEVELS } from '../fraud/engine.js'
-import { BEHAVIOUR_ANOMALY_FLAGS } from '../fraud/signalFamilies.js'
+import { BEHAVIOUR_ANOMALY_FLAGS, TRANSACTION_PROFILE_FLAGS } from '../fraud/signalFamilies.js'
 
 // The assessment layer's results, shown under the transaction checks. The
 // transaction checks above stay the original engine's own result; this card
@@ -81,10 +81,11 @@ function modelRow(mlAnalysis, agreement) {
   return `${MODEL_BANDS[mlAnalysis.band]} · Synthetic-trained model${disagreement}`
 }
 
-function behaviourRow(anomalies) {
+function behaviourRow(anomalies, profileFlags = []) {
   if (anomalies == null) return 'Not assessed'
-  if (!anomalies.length) return 'No departures from your usual pattern'
-  return `${anomalies.map((flag) => BEHAVIOUR_ANOMALY_FLAGS[flag]).join('; ')} (counted with the transaction rules)`
+  const items = [...anomalies.map((flag) => BEHAVIOUR_ANOMALY_FLAGS[flag]), ...profileFlags.map((flag) => TRANSACTION_PROFILE_FLAGS[flag])]
+  if (!items.length) return 'No departures from your usual pattern'
+  return `${items.join('; ')} (counted with the transaction rules)`
 }
 
 function evidenceRow(evidenceAnalysis, evidenceRisk) {
@@ -97,7 +98,9 @@ function evidenceRow(evidenceAnalysis, evidenceRisk) {
 function combinedExplanation(combined) {
   if (combined.compatibilityFloor?.applied) return HYBRID_RULES['compatibility.floor'].text
   const deciding = combined.rules.filter((id) => HYBRID_RULES[id]?.level === combined.level).map((id) => HYBRID_RULES[id].text)
-  return deciding[0] ?? 'No concerns from any source.'
+  if (deciding[0]) return deciding[0]
+  // Nothing raised the level. Points that were noted are still listed below.
+  return combined.reasons.length > 0 ? 'Some points below are worth a look, but none raised the level.' : 'No source raised the level.'
 }
 
 function HybridSummary({ analysis, assessment }) {
@@ -106,10 +109,10 @@ function HybridSummary({ analysis, assessment }) {
   const rows = [
     [
       'Transaction rules',
-      `${analysis.score} · ${LEVEL_SHORT[analysis.riskLevel]}${rules.score !== analysis.score ? ` (${rules.score} · ${LEVEL_SHORT[rules.level]} without the wording check)` : ''}`,
+      `${analysis.score} · ${LEVEL_SHORT[analysis.riskLevel]}${rules.score !== analysis.score ? ` (${rules.score} · ${LEVEL_SHORT[rules.level]} setting the wording check aside)` : ''}`,
     ],
     ['Transaction model', modelRow(mlAnalysis, risk.mlRisk.agreement)],
-    ['Behaviour', behaviourRow(risk.behaviouralRisk.anomalies)],
+    ['Behaviour', behaviourRow(risk.behaviouralRisk.anomalies, risk.transactionRisk.profileFlags)],
     [
       'Message',
       textAnalysis
@@ -135,6 +138,19 @@ function HybridSummary({ analysis, assessment }) {
         ))}
       </dl>
 
+      {combined.drivers?.length > 0 && (
+        <>
+          <p className="fa-results__label">Why this level</p>
+          <ul className="fa-check__findings">
+            {combined.drivers.map((driver) => (
+              <li key={driver.rule} className={`is-${combined.level === 'HIGH' ? 'bad' : 'warn'}`}>
+                {driver.text}
+                {driver.reasons.length > 0 && ` ${driver.reasons.slice(0, 3).join(' ')}`}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {combined.supporting?.length > 0 && (
         <>
           <p className="fa-results__label">Transaction model</p>
