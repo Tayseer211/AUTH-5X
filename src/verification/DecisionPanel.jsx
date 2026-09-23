@@ -1,17 +1,18 @@
 import { useState } from 'react'
 import Button from '../components/Button.jsx'
 import { Alert } from '../components/Feedback.jsx'
+import { WARNING_SOURCE_LABELS, decisionWarnings } from './decisionState.js'
 
-// Approve / request info / reject, gated by the risk level:
+// Approve / request info / reject, gated by the risk level (the combined
+// assessment level when there is one, otherwise the engine's level):
 //   LOW    — approve directly
 //   MEDIUM — approve only after acknowledging the listed warnings
 //   HIGH   — approval is not offered
-function DecisionPanel({ analysis, onApprove, onRequestInfo, onReject, error, busy }) {
+function DecisionPanel({ analysis, assessment, onApprove, onRequestInfo, onReject, error, busy }) {
   const [acknowledged, setAcknowledged] = useState(false)
-  const { riskLevel } = analysis
-  const warnings = analysis.checks
-    .filter((check) => check.status !== 'PASS')
-    .flatMap((check) => check.findings.filter((finding) => finding.tone !== 'ok').map((finding) => finding.text))
+  const riskLevel = assessment?.combined.level ?? analysis.riskLevel
+  const raisedByMessage = Boolean(assessment?.combined.raisedByTextOrEvidence)
+  const warnings = decisionWarnings(analysis, assessment)
 
   const title =
     riskLevel === 'LOW'
@@ -40,7 +41,11 @@ function DecisionPanel({ analysis, onApprove, onRequestInfo, onReject, error, bu
           </p>
           <ul className="fa-decision__warnings">
             {warnings.map((warning) => (
-              <li key={warning}>{warning}</li>
+              <li key={warning.id}>
+                {warning.text}
+                {warning.sources.length > 1 &&
+                  ` (reported by: ${warning.sources.map((source) => WARNING_SOURCE_LABELS[source]).join(', ')})`}
+              </li>
             ))}
           </ul>
           <label className="fa-checkbox fa-decision__ack">
@@ -52,8 +57,10 @@ function DecisionPanel({ analysis, onApprove, onRequestInfo, onReject, error, bu
 
       {riskLevel === 'HIGH' && (
         <Alert tone="danger" title="Additional information is required before proceeding.">
-          Multiple checks failed, including the wording of the request itself. Contact the recipient using details you
-          already hold — not any contact details in the request.
+          {raisedByMessage
+            ? 'The message with this request matches fraud patterns or contradicts the request itself.'
+            : 'Multiple checks failed, including the wording of the request itself.'}{' '}
+          Contact the recipient using details you already hold — not any contact details in the request.
         </Alert>
       )}
 

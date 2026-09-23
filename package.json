@@ -10,7 +10,8 @@
     "test": "node --test \"src/**/*.test.js\"",
     "data:generate": "node scripts/generate-synthetic-dataset.js",
     "model:train": "node scripts/train-fraud-model.js",
-    "data:audit": "node scripts/audit-synthetic-dataset.js"
+    "data:audit": "node scripts/audit-synthetic-dataset.js",
+    "text:evaluate": "node scripts/evaluate-text.js"
   },
   "dependencies": {
     "react": "^18.3.1",

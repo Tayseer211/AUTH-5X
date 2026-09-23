@@ -8,6 +8,8 @@ import { formatDateTime } from '../utils/format.js'
 import RequestDetails from '../verification/RequestDetails.jsx'
 import AnalysisProgress from '../verification/AnalysisProgress.jsx'
 import AnalysisResults from '../verification/AnalysisResults.jsx'
+import AssessmentSummary from '../verification/AssessmentSummary.jsx'
+import { awaitingDecision } from '../verification/decisionState.js'
 import DecisionPanel from '../verification/DecisionPanel.jsx'
 import RequestInfoModal from '../verification/RequestInfoModal.jsx'
 
@@ -136,6 +138,8 @@ function VerifyPage({ txId }) {
 
           {phase !== 'analysing' && analysis && <AnalysisResults analysis={analysis} />}
 
+          {phase !== 'analysing' && analysis && tx.assessment && <AssessmentSummary analysis={analysis} assessment={tx.assessment} />}
+
           {phase === 'request' && !analysis && (
             <section className="fa-card fa-prompt">
               <h2>Check this request before you approve it</h2>
@@ -151,9 +155,10 @@ function VerifyPage({ txId }) {
             </section>
           )}
 
-          {phase === 'results' && analysis && !decided && (
+          {phase !== 'analysing' && awaitingDecision(tx) && (
             <DecisionPanel
               analysis={analysis}
+              assessment={tx.assessment}
               busy={approving}
               error={null}
               onApprove={handleApprove}

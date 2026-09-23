@@ -1,5 +1,6 @@
 import { CHANNEL_LABELS, FREQUENCY_LABELS, formatMoney, formatTime, ordinal } from '../utils/format.js'
 import { zonedParts } from '../utils/time.js'
+import { LANGUAGE_PATTERNS, SECURITY_NAME_RULE_PATTERN } from './text/patterns.js'
 
 // The six rule-based fraud checks. Each takes the standing-order request and
 // the behavioural profile derived from the user's ledger (profile.js) and
@@ -84,7 +85,7 @@ export function checkRecipient(request, profile) {
     findings.push(bad(`The payee was added ${context.beneficiaryAddedMinutesBefore} minutes before this request.`))
   }
 
-  if (/secure|settlement|holding|verif|safe account|protection/i.test(request.recipient)) {
+  if (SECURITY_NAME_RULE_PATTERN.test(request.recipient)) {
     score -= 0.1
     findings.push(warn('The payee name uses security-themed wording that often appears in impersonation scams.'))
   }
@@ -123,47 +124,9 @@ export function checkBehaviour(request, profile) {
   return { score, findings }
 }
 
-// Scam-language patterns for the request text. Keyword rules for now — the
-// "NLP" check will later combine these with a trained text model. Exported so
-// feature extraction (features.js) reads the same patterns.
-export const LANGUAGE_PATTERNS = [
-  {
-    id: 'urgency',
-    label: 'Urgency pressure',
-    penalty: 0.2,
-    pattern: /\b(urgent(ly)?|immediately|today|right away|as soon as possible|within \d+ (hours?|minutes?)|before \d{1,2}[:.]\d{2})/i,
-  },
-  {
-    id: 'threat',
-    label: 'Threat of consequences',
-    penalty: 0.25,
-    pattern: /\b(suspen(d|ded|sion)|frozen|freeze|blocked|legal action|penalt(y|ies)|closure)\b/i,
-  },
-  {
-    id: 'bypassChecks',
-    label: 'Asks you to bypass normal checks',
-    penalty: 0.3,
-    pattern: /\b(no need to (contact|call|verify)|do not (contact|call|tell)|don't (contact|call|tell)|without (verifying|checking)|skip (the )?(verification|checks?))\b/i,
-  },
-  {
-    id: 'externalLink',
-    label: 'External link or website',
-    penalty: 0.25,
-    pattern: /(https?:\/\/\S+|\b[a-z0-9-]+\.(com|net|org|info|xyz|link|site|online)\b)/i,
-  },
-  {
-    id: 'sensitiveInfo',
-    label: 'Requests sensitive information',
-    penalty: 0.35,
-    pattern: /\b(otp|one-time (pass)?code|pin|password|card number|cvv)\b/i,
-  },
-  {
-    id: 'bankImpersonation',
-    label: 'Claims to act for your bank',
-    penalty: 0.2,
-    pattern: /\b(security team|account protection|security review|on behalf of (your|the) bank|bank officer|fraud department)\b/i,
-  },
-]
+// Scam-language patterns live in text/patterns.js; re-exported so existing
+// imports of LANGUAGE_PATTERNS from checks.js keep working.
+export { LANGUAGE_PATTERNS }
 
 export function checkLanguage(request) {
   const text = request.requestText ?? ''

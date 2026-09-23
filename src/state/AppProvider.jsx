@@ -13,8 +13,7 @@ import {
   resetLedger,
   saveAnalysis,
 } from '../transactions/ledger.js'
-import { analyseStandingOrder } from '../fraud/engine.js'
-import { deriveUserProfile } from '../fraud/profile.js'
+import { assessPendingRequest } from '../transactions/requestAssessment.js'
 import { navigate } from '../router/router.jsx'
 
 // Single app-wide store: the signed-in user, their ledger, the in-progress
@@ -89,8 +88,8 @@ export function AppProvider({ children }) {
         updateLedger((current) => {
           const tx = current.transactions.find((item) => item.id === txId)
           if (!tx) throw new TransactionError('This transaction could not be found.')
-          const profile = deriveUserProfile(current.transactions)
-          return saveAnalysis(user.id, current, txId, analyseStandingOrder(tx, profile))
+          const { analysis, assessment } = assessPendingRequest(tx, current.transactions, user)
+          return saveAnalysis(user.id, current, txId, analysis, assessment)
         }),
       approve: (txId, options) => updateLedger((current) => approveTransaction(user.id, current, txId, options)),
       requestInfo: (txId, request) => updateLedger((current) => requestMoreInformation(user.id, current, txId, request)),

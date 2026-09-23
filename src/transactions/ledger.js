@@ -2,13 +2,14 @@ import { storage } from '../storage/storage.js'
 import { createId } from '../utils/ids.js'
 import { createSeedTransactions } from '../data/seedTransactions.js'
 import { createDemoRequests } from '../data/demoCases.js'
+import { decisionLevel } from './requestAssessment.js'
 
 // Each user's simulated ledger lives under `fraudauth:v1:ledger:<userId>` as
 // `{ transactions, demoRun }`. Every mutation here is pure with respect to
 // its input ledger: it returns a new ledger and persists it.
 //
 // Status lifecycle for a standing-order request:
-//   PENDING (requiresApproval) --runAnalysis--> PENDING + analysis
+//   PENDING (requiresApproval) --runAnalysis--> PENDING + analysis (+ assessment)
 //     --approve-----> APPROVED (+ proof of payment)
 //     --requestInfo-> FLAGGED  (decision INFO_REQUESTED)
 //     --reject------> REJECTED
@@ -91,10 +92,18 @@ export function getLedgerStats(transactions) {
   }
 }
 
-export function saveAnalysis(userId, ledger, txId, analysis) {
+// Stores the engine analysis and, when given, the combined assessment
+// (requestAssessment.js). `riskScore` stays the engine's score; `riskLevel`
+// is the level decisions are gated on.
+export function saveAnalysis(userId, ledger, txId, analysis, assessment = null) {
   return updateTransaction(userId, ledger, txId, (tx) => {
     assertAwaitingDecision(tx)
-    return { analysis, riskScore: analysis.score, riskLevel: analysis.riskLevel }
+    return {
+      analysis,
+      ...(assessment ? { assessment } : {}),
+      riskScore: analysis.score,
+      riskLevel: assessment?.combined.level ?? analysis.riskLevel,
+    }
   })
 }
 
@@ -102,10 +111,11 @@ export function approveTransaction(userId, ledger, txId, { acknowledgedWarnings 
   return updateTransaction(userId, ledger, txId, (tx) => {
     assertAwaitingDecision(tx)
     if (!tx.analysis) throw new TransactionError('Run the risk assessment before approving.')
-    if (tx.analysis.riskLevel === 'HIGH') {
+    const level = decisionLevel(tx)
+    if (level === 'HIGH') {
       throw new TransactionError("High-risk transactions can't be approved without additional information.")
     }
-    if (tx.analysis.riskLevel === 'MEDIUM' && !acknowledgedWarnings) {
+    if (level === 'MEDIUM' && !acknowledgedWarnings) {
       throw new TransactionError('Confirm you have checked the warning indicators before approving.')
     }
 

@@ -1,5 +1,5 @@
 import { normalizeRecipientBank } from '../data/recipientBanks.js'
-import { LANGUAGE_PATTERNS } from './checks.js'
+import { CHANGED_DETAILS_TEXT, LANGUAGE_PATTERNS, PROMISED_RETURNS_TEXT, SECURITY_NAME_FEATURE_PATTERN } from './text/patterns.js'
 import { initiatedHour, isBaselineTransaction } from './profile.js'
 import { zonedParts } from '../utils/time.js'
 
@@ -45,10 +45,6 @@ export const CATEGORY_KEYWORDS = [
   ['FAMILY', /\b(family|allowance)\b/i],
 ]
 
-const SECURITY_THEMED_NAME = /\b(secure\w*|safe\w*|verif\w*|shield\w*|guardian\w*|settlements?|holding|escrow|clearing|protection)\b/i
-const CHANGED_DETAILS_TEXT =
-  /\b(new|updated|changed|revised)\b[^.]{0,40}\b(bank details|account details|account|payment details)\b|\b(bank details|account details|payment details|account) (was|were|has been|have been|have|has) (changed|updated)\b|\bno longer active\b/i
-const PROMISED_RETURNS_TEXT = /\b(guaranteed|returns?|profits?|double your|interest of \d+%|\d+% (monthly|weekly))\b/i
 const LEGAL_SUFFIXES = new Set(['ltd', 'limited', 'co', 'company', 'inc', 'plc'])
 
 const round = (value, places = 4) => (value == null || !Number.isFinite(value) ? null : Math.round(value * 10 ** places) / 10 ** places)
@@ -235,7 +231,7 @@ function derivedFeatures(raw, baseline, profile, timeZone) {
     recipientAccountChanged: raw.recipientAccountPreviouslyUsed === false,
     recipientNameSimilarity,
     lookalikeRecipient: !raw.recipientPreviouslyUsed && recipientNameSimilarity >= LOOKALIKE_THRESHOLD,
-    securityThemedRecipientName: SECURITY_THEMED_NAME.test(raw.recipient),
+    securityThemedRecipientName: SECURITY_NAME_FEATURE_PATTERN.test(raw.recipient),
     overseasRecipient: raw.recipientBank === 'OVERSEAS_BANK',
     beneficiaryAddedRecently: raw.beneficiaryAddedMinutesBefore != null && raw.beneficiaryAddedMinutesBefore < MINUTES_PER_DAY,
 

@@ -22,7 +22,9 @@ function renderAppPage(path, query) {
   if (path === '/history') return <HistoryPage query={query} />
 
   const verify = matchRoute('/verify/:id', path)
-  if (verify) return <VerifyPage txId={verify.id} />
+  // Keyed by id so opening another request starts with fresh page state
+  // (phase, errors, open dialogs) instead of the previous request's.
+  if (verify) return <VerifyPage key={verify.id} txId={verify.id} />
 
   const proof = matchRoute('/proof/:id', path)
   if (proof) return <ProofPage txId={proof.id} />
