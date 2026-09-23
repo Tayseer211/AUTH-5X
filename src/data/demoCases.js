@@ -1,5 +1,8 @@
 import { createId } from '../utils/ids.js'
 import { getBank } from './banks.js'
+import { APP_TIMEZONE, addMonths, daysInMonth, zonedDate, zonedParts } from '../utils/time.js'
+
+const DAY_MS = 24 * 60 * 60 * 1000
 
 // The three controlled standing-order demonstrations. Each case only carries
 // raw request features; the fraud engine never reads `verificationCase`, so
@@ -62,17 +65,14 @@ export const DEMO_CASES = [
 ]
 
 // Next occurrence of `dayOfMonth` (clamped to short months) that is at least
-// two days away, at 06:00.
-// TIMEZONE: uses the runtime's local zone. The behaviour check reads the day
-// of month back from this date, so both must agree on Indian/Mauritius.
-export function firstPaymentDate(now, dayOfMonth) {
-  const earliest = new Date(now)
-  earliest.setDate(earliest.getDate() + 2)
+// two days away, at 06:00 Mauritius time.
+export function firstPaymentDate(now, dayOfMonth, timeZone = APP_TIMEZONE) {
+  const earliest = new Date(now.getTime() + 2 * DAY_MS)
+  const current = zonedParts(now, timeZone)
 
   for (let monthOffset = 0; monthOffset < 3; monthOffset += 1) {
-    const candidate = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1, 6, 0, 0, 0)
-    const daysInMonth = new Date(candidate.getFullYear(), candidate.getMonth() + 1, 0).getDate()
-    candidate.setDate(Math.min(dayOfMonth, daysInMonth))
+    const month = addMonths(current, monthOffset)
+    const candidate = zonedDate({ ...month, day: Math.min(dayOfMonth, daysInMonth(month)), hour: 6 }, timeZone)
     if (candidate >= earliest) return candidate
   }
   return earliest
@@ -93,15 +93,13 @@ export function createDemoRequests(user, { run = 1, now = new Date() } = {}) {
   const bankName = getBank(user.bank?.code)?.name ?? 'your bank'
   const bankSlug = bankName.toLowerCase().replace(/[^a-z0-9]/g, '')
 
-  const yesterday = new Date(now)
-  yesterday.setDate(yesterday.getDate() - 1)
+  const today = zonedParts(now, APP_TIMEZONE)
 
   return shuffle(DEMO_CASES).map((demoCase, queuePosition) => {
-    // TIMEZONE: setHours uses the runtime's local zone. The behaviour check
-    // compares this hour against the user's active hours.
-    const initiated = new Date(yesterday)
-    initiated.setHours(demoCase.initiatedAt.hour, demoCase.initiatedAt.minute, 0, 0)
-    const initiatedAt = initiated.toISOString()
+    // Set up yesterday at the case's Mauritius wall-clock time; the behaviour
+    // check compares this hour against the user's active hours.
+    const { hour, minute } = demoCase.initiatedAt
+    const initiatedAt = zonedDate({ ...today, day: today.day - 1, hour, minute }, APP_TIMEZONE).toISOString()
 
     return {
       id: createId('txn'),

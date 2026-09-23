@@ -1,4 +1,3 @@
-import { DEMO_PROFILE } from '../data/userProfile.js'
 import {
   checkAmount,
   checkBehaviour,
@@ -13,7 +12,9 @@ import {
 // Each check produces a 0–1 score; the overall score is the weighted average
 // scaled to 0–100. Higher means the request matches the user's normal,
 // expected activity (it is a safety score, not a fraud probability).
-// With the three demo cases this yields LEGITIMATE 100, GREY 69, FRAUD 8.
+// `profile` is derived from the user's ledger by deriveUserProfile
+// (profile.js). Against the seed history, the three demo cases score
+// LEGITIMATE 100, GREY 69, FRAUD 8.
 
 export const CHECKS = [
   { id: 'amount', label: 'Amount analysis', weight: 25, run: checkAmount },
@@ -52,7 +53,7 @@ export const RISK_LEVELS = {
 
 export const ENGINE_INFO = { id: 'rules', version: '1.0.0', label: 'Rule-based risk engine (simulation)' }
 
-export function analyseStandingOrder(request, profile = DEMO_PROFILE) {
+export function analyseStandingOrder(request, profile) {
   const checks = CHECKS.map((check) => {
     const { score, findings } = check.run(request, profile)
     const clamped = Math.min(1, Math.max(0, score))

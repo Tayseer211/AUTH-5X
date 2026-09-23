@@ -1,7 +1,9 @@
 import { CHANNEL_LABELS, FREQUENCY_LABELS, formatMoney, formatTime, ordinal } from '../utils/format.js'
+import { zonedParts } from '../utils/time.js'
 
 // The six rule-based fraud checks. Each takes the standing-order request and
-// the user's behavioural profile and returns `{ score, findings }`:
+// the behavioural profile derived from the user's ledger (profile.js) and
+// returns `{ score, findings }`:
 //   score    — 1 means fully consistent with the user's normal activity;
 //              penalties are subtracted and the engine clamps to [0, 1].
 //   findings — explanations shown in the UI, tagged ok / warn / bad.
@@ -18,6 +20,10 @@ function findKnownRecipient(request, profile) {
 }
 
 export function checkAmount(request, profile) {
+  if (!profile.standingOrderAmountRange) {
+    return { score: 0.5, findings: [warn('There are no earlier standing orders on this account to compare the amount with.')] }
+  }
+
   const { min, max } = profile.standingOrderAmountRange
   const ratio = request.amount / max
 
@@ -50,7 +56,8 @@ export function checkFrequency(request, profile) {
   }
 
   const yearlyTotal = request.amount * (PAYMENTS_PER_YEAR[request.frequency] ?? 1)
-  if (yearlyTotal > profile.standingOrderAmountRange.max * 12 * 2) {
+  const usualMax = profile.standingOrderAmountRange?.max
+  if (usualMax != null && yearlyTotal > usualMax * 12 * 2) {
     score -= 0.3
     findings.push(bad(`At this frequency the order would move ${formatMoney(yearlyTotal)} per year.`))
   }
@@ -65,7 +72,8 @@ export function checkRecipient(request, profile) {
   let score = 1
 
   if (known) {
-    findings.push(ok(`${request.recipient} is an existing payee (${known.relationship.toLowerCase()}).`))
+    const payments = known.transactionCount === 1 ? '1 earlier payment' : `${known.transactionCount} earlier payments`
+    findings.push(ok(`${request.recipient} is an existing payee (${known.relationship.toLowerCase()}, ${payments}).`))
   } else {
     score -= 0.4
     findings.push(bad(`${request.recipient} has never been paid from this account.`))
@@ -89,23 +97,24 @@ export function checkBehaviour(request, profile) {
   const findings = []
   let score = 1
 
-  // TIMEZONE: getDate()/getHours() read the runtime's local zone, so the
-  // result depends on where this code runs. Must use Indian/Mauritius.
-  const paymentDay = new Date(request.date).getDate()
-  if (!profile.usualPaymentDays.includes(paymentDay)) {
+  // Day and hour are read in the profile's time zone, not the runtime's.
+  const timeZone = profile.timezone
+  const paymentDay = zonedParts(request.date, timeZone).day
+  if (profile.paymentDays.length && !profile.usualPaymentDays.includes(paymentDay)) {
     score -= 0.3
     findings.push(warn(`The first payment on the ${ordinal(paymentDay)} falls outside your usual payment days (${profile.usualPaymentDaysLabel}).`))
   }
 
-  if (context.initiatedAt) {
-    const hour = new Date(context.initiatedAt).getHours()
+  if (context.initiatedAt && profile.activeHours) {
+    const { hour } = zonedParts(context.initiatedAt, timeZone)
     if (hour < profile.activeHours.start || hour >= profile.activeHours.end) {
       score -= 0.34
-      findings.push(warn(`It was set up at ${formatTime(context.initiatedAt)}, outside the hours you normally bank.`))
+      findings.push(warn(`It was set up at ${formatTime(context.initiatedAt, { timeZone })}, outside the hours you normally bank.`))
     }
   }
 
-  if (context.deviceId && !profile.knownDevices.includes(context.deviceId)) {
+  // Devices can only be judged once the history records some.
+  if (context.deviceId && profile.knownDevices.length && !profile.knownDevices.includes(context.deviceId)) {
     score -= 0.3
     findings.push(bad('It was initiated from a device that has not been used on this account before.'))
   }
@@ -115,34 +124,41 @@ export function checkBehaviour(request, profile) {
 }
 
 // Scam-language patterns for the request text. Keyword rules for now — the
-// "NLP" check will later combine these with a trained text model.
-const LANGUAGE_PATTERNS = [
+// "NLP" check will later combine these with a trained text model. Exported so
+// feature extraction (features.js) reads the same patterns.
+export const LANGUAGE_PATTERNS = [
   {
+    id: 'urgency',
     label: 'Urgency pressure',
     penalty: 0.2,
     pattern: /\b(urgent(ly)?|immediately|today|right away|as soon as possible|within \d+ (hours?|minutes?)|before \d{1,2}[:.]\d{2})/i,
   },
   {
+    id: 'threat',
     label: 'Threat of consequences',
     penalty: 0.25,
     pattern: /\b(suspen(d|ded|sion)|frozen|freeze|blocked|legal action|penalt(y|ies)|closure)\b/i,
   },
   {
+    id: 'bypassChecks',
     label: 'Asks you to bypass normal checks',
     penalty: 0.3,
     pattern: /\b(no need to (contact|call|verify)|do not (contact|call|tell)|don't (contact|call|tell)|without (verifying|checking)|skip (the )?(verification|checks?))\b/i,
   },
   {
+    id: 'externalLink',
     label: 'External link or website',
     penalty: 0.25,
     pattern: /(https?:\/\/\S+|\b[a-z0-9-]+\.(com|net|org|info|xyz|link|site|online)\b)/i,
   },
   {
+    id: 'sensitiveInfo',
     label: 'Requests sensitive information',
     penalty: 0.35,
     pattern: /\b(otp|one-time (pass)?code|pin|password|card number|cvv)\b/i,
   },
   {
+    id: 'bankImpersonation',
     label: 'Claims to act for your bank',
     penalty: 0.2,
     pattern: /\b(security team|account protection|security review|on behalf of (your|the) bank|bank officer|fraud department)\b/i,
@@ -174,19 +190,21 @@ export function checkExpectedRequest(request, profile) {
   const findings = []
   let score = 1
 
-  if (channel && channel !== profile.usualChannel) {
+  if (channel && profile.usualChannel && channel !== profile.usualChannel) {
     score -= 0.5
     findings.push(bad(`The request arrived through ${CHANNEL_LABELS[channel] ?? channel}, not through your online banking.`))
   }
 
-  if (!known?.agreementOnFile) {
+  // An existing standing order to this payee is the arrangement on file.
+  const arrangement = known?.standingOrder
+  if (!arrangement) {
     score -= 0.4
-    findings.push(bad('No agreement, invoice or earlier arrangement on file supports this request.'))
-  } else if (known.expectedFrequency !== request.frequency) {
+    findings.push(bad('No existing standing order or earlier arrangement with this payee supports this request.'))
+  } else if (arrangement.frequency !== request.frequency) {
     score -= 0.3
-    findings.push(warn('The frequency differs from the arrangement on file for this payee.'))
+    findings.push(warn('The frequency differs from your existing standing order to this payee.'))
   } else {
-    findings.push(ok(`Matches the ${known.relationship.toLowerCase()} arrangement on file.`))
+    findings.push(ok(`Matches your existing ${known.relationship.toLowerCase()} standing order.`))
   }
 
   return { score, findings }

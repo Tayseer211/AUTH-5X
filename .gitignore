@@ -4,3 +4,6 @@ dist-ssr
 *.local
 .env
 .DS_Store
+
+# Synthetic dataset output (reproducible via `npm run data:generate`)
+data/synthetic/generated/

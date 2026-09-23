@@ -25,8 +25,10 @@ export function formatDate(value, { long = false } = {}) {
   })
 }
 
-export function formatTime(value) {
-  return new Date(value).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+// `timeZone` is optional so existing display output is unchanged; the fraud
+// checks pass the profile's zone.
+export function formatTime(value, { timeZone } = {}) {
+  return new Date(value).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone })
 }
 
 export function formatDateTime(value) {

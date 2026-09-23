@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test \"src/**/*.test.js\"",
+    "data:generate": "node scripts/generate-synthetic-dataset.js"
   },
   "dependencies": {
     "react": "^18.3.1",

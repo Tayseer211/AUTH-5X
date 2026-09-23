@@ -11,6 +11,8 @@ data is stored only in the browser's localStorage.
 npm install
 npm run dev      # http://localhost:5173
 npm run build    # production build in dist/
+npm test         # unit tests (node --test)
+npm run data:generate   # regenerate the synthetic dataset
 ```
 
 ### Structure
@@ -19,8 +21,11 @@ npm run build    # production build in dist/
 src/
   auth/           account validation and the browser-only account store
   components/     shared UI (buttons, fields, modal, app shell, ...)
-  data/           simulated banks, seed history, demo cases, user profile
-  fraud/          six-check rule-based fraud engine (checks.js, engine.js)
+  data/           simulated banks, seed history, demo cases
+  fraud/          six-check rule-based fraud engine (checks.js, engine.js),
+                  profile derived from history (profile.js), ML feature
+                  extraction (features.js) and the synthetic dataset
+                  generator (synthetic/)
   pages/          one component per route
   router/         hash router (#/dashboard, #/verify/:id, ...)
   state/          AppProvider: session, ledger and actions
@@ -34,5 +39,11 @@ src/
 `public/prototype/fraud-auth-prototype.html` is the original compiled
 prototype this app was rebuilt from, kept as a reference. It is served at
 `/prototype/fraud-auth-prototype.html`.
+
+`data/synthetic/` holds the synthetic standing-order dataset for the future ML
+model: generated files in `generated/` and a data card (`DATA_CARD.md`)
+explaining how it is made and its limits. It is entirely synthetic, not real
+banking data. The generated files are not committed; run `npm run data:generate`
+(`scripts/generate-synthetic-dataset.js`) to recreate them.
 
 `frontend/` is a separate Next.js site and is not part of this app.
