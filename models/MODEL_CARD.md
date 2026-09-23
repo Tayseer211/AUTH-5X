@@ -3,9 +3,12 @@
 > **Prototype model trained only on synthetic data.** Every number in this card
 > measures how well the model recovers patterns written into the synthetic
 > generator. None of them is an estimate of real-world fraud-detection
-> performance, and they must not be presented as one. The model is **not**
-> connected to the fraud.auth UI; the rule engine still produces every score the
-> app shows.
+> performance, and they must not be presented as one. Since Stage 5 the app
+> shows the model's output only as a **model estimate** in a LOW / ELEVATED /
+> HIGH band ("Synthetic-trained; not calibrated to real-world fraud rates"),
+> never as a probability of fraud, and the model cannot raise a request's risk
+> on its own (see "Use in the app" below). The rule engine still produces the
+> transaction score the app shows.
 
 | | |
 |---|---|
@@ -365,7 +368,33 @@ ambiguous request; it was not engineered to match the rule engine's "review".
    counter-intuitive signs.
 9. **Labels are exact here**; real fraud labels are late, noisy and incomplete.
 
-## Using the model (not wired into the UI)
+## Use in the app (Stage 5)
+
+The verification flow scores each pending standing order through the hybrid
+assessment (`src/fraud/assessment.js`, policy `hybrid-1` in
+`src/fraud/aggregation.js`). The model's part:
+
+- **Transaction-only input.** The request is scored with its message text
+  removed (`src/fraud/ml/explain.js`). The message is judged by the text
+  classifier; the model's own text weights are unreliable (see limitation 8)
+  and would count the same words twice.
+- **Model estimate, not a probability.** The output is shown as a band:
+  LOW below 0.05, ELEVATED from 0.05, HIGH from 0.6, the two candidate
+  thresholds recorded in `fraud-model.json` (`thresholds.costSensitive` and
+  `thresholds.candidate`).
+- **Part of the transaction family, never its own vote.** With the rule
+  checks at LOW, a higher model estimate is only reported as "Model and
+  transaction rules disagree". It never lowers a level, and its one effect is
+  to strengthen a transaction the rules already rate MEDIUM.
+- **Explainable.** The logistic model's logit is split exactly into
+  per-feature contributions; the largest are shown.
+- **Snapshot.** The estimate is computed once, from the ledger and profile as
+  they stood at the analysis time (`asOf`), and stored with the assessment.
+  Reopening a request reads the stored estimate; it is never recomputed.
+
+`fraud-model.json` and `EVALUATION.md` are unchanged by this integration.
+
+## Using the model directly
 
 ```js
 import artifact from '../../models/fraud-model.json'

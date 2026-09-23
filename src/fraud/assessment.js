@@ -1,89 +1,57 @@
+import {
+  HYBRID_RULES,
+  POLICY_VERSION,
+  aggregate,
+  contradictionFamily,
+  isUncorroboratedSensitiveMention,
+  messageFamily,
+  modelAgreement,
+  rulesExcludingLanguage,
+  transactionFamily,
+} from './aggregation.js'
 import { ENGINE_INFO, RISK_LEVELS, analyseStandingOrder } from './engine.js'
+import { extractFeatures } from './features.js'
+import { inputsAsOf, transactionModelEstimate } from './ml/explain.js'
+import { behaviourAnomalies } from './signalFamilies.js'
 import { CLASSIFIER_VERSION, classifyMessage } from './text/classifier.js'
 import { compareTextEvidence } from './text/evidence.js'
 
-// Assessment: the integration boundary that puts three separate analyses of a
-// pending standing order side by side and combines them with an explicit,
-// deterministic policy.
+// Assessment: the integration boundary for a pending standing order. It puts
+// the separate analyses side by side and combines them with the explicit,
+// deterministic hybrid policy in aggregation.js.
 //
-//   transactionAnalysis — the existing rule engine (engine.js), unchanged and
-//                         authoritative for the request itself;
-//   textAnalysis        — the message classifier (text/classifier.js), from
-//                         the text alone;
-//   evidenceAnalysis    — what the text says compared with the request and
-//                         profile (text/evidence.js).
+//   transactionAnalysis — the original rule engine (engine.js), unchanged:
+//                         its 0–100 score and level are preserved, displayed,
+//                         and used as the compatibility floor;
+//   mlAnalysis          — the fraud model's transaction-only estimate
+//                         (ml/explain.js), a synthetic-trained model estimate
+//                         in a LOW / ELEVATED / HIGH band, never a probability
+//                         of fraud; null when no model is supplied;
+//   textAnalysis        — the message classifier (text/classifier.js);
+//   evidenceAnalysis    — the message compared with the request and profile
+//                         (text/evidence.js);
+//   risk                — the three concern families (transaction, message,
+//                         contradiction) and behaviour, as summarised for the
+//                         policy;
+//   combinedAssessment  — the final LOW / MEDIUM / HIGH level with the rules
+//                         that set it, reasons, mitigating and supporting
+//                         information, and verification steps.
 //
-// Each is returned exactly as its component produced it. Nothing here
-// recomputes, rescales or replaces them, and there is no combined "fraud
-// probability": the three results measure different things and are not
-// calibrated against each other.
+// Each analysis is returned exactly as its component produced it. There is no
+// combined fraud probability.
 //
-// Combined level policy (vocabulary of engine.js RISK_LEVELS):
+// Time: the analysis snapshot is `asOf`, the engine analysis's own timestamp.
+// The model reads the ledger as it stood at `asOf`, so the same analysis always
+// gives the same result; nothing here reads the clock.
 //
-//   1. Start from the transaction engine's risk level. Text and evidence can
-//      raise the level; they never lower it. Matching evidence and reassuring
-//      wording are reported as mitigating reasons only.
-//   2. Raise to MEDIUM (review) if any of:
-//        - the text classifier says "suspicious" or "fraudulent";
-//        - the evidence has a conflict with the request;
-//        - the evidence has a strong ("bad") suspicious signal (a look-alike
-//          bank link, or codes and passwords that the classifier also reads
-//          as a request rather than a warning).
-//   3. Raise to HIGH if any of:
-//        - the text classifier says "fraudulent" and the evidence has a strong
-//          conflict with the request (the text and the request disagree);
-//        - the evidence has two or more strong conflicts;
-//        - the text classifier says "fraudulent" and the transaction engine
-//          already says MEDIUM.
-//   4. Nothing else changes the level. In particular a text classified
-//      "legit_unusual", a sender claim or a plain link is reported but does
-//      not raise it, and missing evidence is neither a risk nor a comfort.
-//
-// Without text, the combined level is the transaction engine's level and the
-// text and evidence analyses are null.
+// Without text, the text and evidence analyses are null. Without a model (or
+// ledger history), the model estimate is absent or unavailable and the rest of
+// the assessment is unaffected.
 
-export const ASSESSMENT_VERSION = 'assessment-1.0.0'
+export const ASSESSMENT_VERSION = 'assessment-2.0.0'
 
-const LEVEL_ORDER = ['LOW', 'MEDIUM', 'HIGH']
-const higher = (a, b) => (LEVEL_ORDER.indexOf(a) >= LEVEL_ORDER.indexOf(b) ? a : b)
-
-// The rules of the policy above, in the order they are checked.
-export const ASSESSMENT_RULES = {
-  'text.suspicious': { level: 'MEDIUM', text: 'The message has several warning signals.' },
-  'text.fraudulent': { level: 'MEDIUM', text: 'The message matches common fraud patterns.' },
-  'evidence.conflict': { level: 'MEDIUM', text: 'The message disagrees with the request.' },
-  'evidence.strongSuspicious': { level: 'MEDIUM', text: 'The message asks for codes or passwords, or links to a look-alike bank site.' },
-  'text.fraudulent+evidence.strongConflict': { level: 'HIGH', text: 'The message matches fraud patterns and contradicts the request.' },
-  'evidence.multipleStrongConflicts': { level: 'HIGH', text: 'The message contradicts the request on several points.' },
-  'text.fraudulent+transaction.medium': { level: 'HIGH', text: 'The message matches fraud patterns and the request already needs review.' },
-}
-
-// The evidence layer's sensitive-information signal matches the words (PIN,
-// password, one-time code) wherever they appear, including in genuine warnings
-// such as "we will never ask for your PIN". The classifier tells a request from
-// a warning, so that signal only counts as strong when the classifier also
-// found a request.
-function isUncorroboratedSensitiveMention(signal, textAnalysis) {
-  return signal.id === 'sensitive.request' && !(textAnalysis?.intents ?? []).includes('sensitiveInfoRequest')
-}
-
-function firedRules(textAnalysis, evidenceAnalysis, transactionLevel) {
-  const classification = textAnalysis?.classification ?? null
-  const signals = evidenceAnalysis?.signals ?? []
-  const conflicts = signals.filter((signal) => signal.category === 'CONFLICT')
-  const strongConflicts = conflicts.filter((signal) => signal.tone === 'bad')
-  const strongSuspicious = signals.filter((signal) => signal.category === 'SUSPICIOUS' && signal.tone === 'bad' && !isUncorroboratedSensitiveMention(signal, textAnalysis))
-
-  const fired = []
-  if (classification === 'suspicious') fired.push('text.suspicious')
-  if (classification === 'fraudulent') fired.push('text.fraudulent')
-  if (conflicts.length) fired.push('evidence.conflict')
-  if (strongSuspicious.length) fired.push('evidence.strongSuspicious')
-  if (classification === 'fraudulent' && strongConflicts.length) fired.push('text.fraudulent+evidence.strongConflict')
-  if (strongConflicts.length >= 2) fired.push('evidence.multipleStrongConflicts')
-  if (classification === 'fraudulent' && transactionLevel === 'MEDIUM') fired.push('text.fraudulent+transaction.medium')
-  return fired
-}
+// The policy's rules, for display and tests.
+export const ASSESSMENT_RULES = HYBRID_RULES
 
 // --- Reasons ----------------------------------------------------------------
 
@@ -150,6 +118,28 @@ function verificationSteps(level, textAnalysis, evidenceAnalysis) {
   return steps
 }
 
+// --- Model -----------------------------------------------------------------
+
+const BAND_LABELS = { LOW: 'low', ELEVATED: 'elevated', HIGH: 'high' }
+
+// The model's view as supporting information. It never sets the level on its
+// own (see aggregation.js).
+function modelSupport(mlAnalysis, rulesLevel, agreement, strengthened) {
+  if (!mlAnalysis) return []
+  if (mlAnalysis.status !== 'AVAILABLE') {
+    return [{ source: 'model', tone: null, text: 'The transaction model could not score this request, so only the transaction rules were used for it.' }]
+  }
+  const band = BAND_LABELS[mlAnalysis.band]
+  const text = {
+    AGREES: `The transaction model agrees with the transaction rules (${band} model estimate).`,
+    MODEL_HIGHER: strengthened
+      ? `The transaction model’s ${band} estimate backs up the transaction rules’ concerns.`
+      : `Model and transaction rules disagree: the model gives a ${band} estimate, the rules rate the transaction ${RISK_LEVELS[rulesLevel].label.toLowerCase()}. Shown for information; the model does not change the level on its own.`,
+    MODEL_LOWER: `Model and transaction rules disagree: the model gives a ${band} estimate. The rules’ assessment is kept; the model never lowers it.`,
+  }[agreement]
+  return [{ source: 'model', tone: agreement === 'MODEL_HIGHER' ? 'warn' : null, text }]
+}
+
 // --- Entry point ------------------------------------------------------------
 
 // Assesses a pending standing-order request.
@@ -157,56 +147,112 @@ function verificationSteps(level, textAnalysis, evidenceAnalysis) {
 //   text             — optional message or document text about the request;
 //   userBank         — optional customer bank code (MCB / SBM / MAUBANK), used
 //                      by the evidence comparison;
-//   analysis         — optional existing analyseStandingOrder result for this
-//                      request and profile (e.g. the one stored on the
-//                      transaction), used as-is instead of analysing again.
-export function assessStandingOrder({ request, profile, text = null, userBank = null, analysis = null }) {
+//   analysis         — optional existing analyseStandingOrder result, used
+//                      as-is; its analysedAt is the snapshot time `asOf`;
+//   history          — the user's ledger, for the model and behaviour
+//                      (read as of `asOf`);
+//   model            — optional prepared fraud model (ml/explain.js
+//                      prepareModel, e.g. ml/defaultModel.js).
+export function assessStandingOrder({ request, profile, text = null, userBank = null, analysis = null, history = null, model = null }) {
   const transactionAnalysis = analysis ?? analyseStandingOrder(request, profile)
+  const asOf = transactionAnalysis.analysedAt
   const hasText = typeof text === 'string' && text.trim().length > 0
   const textAnalysis = hasText ? classifyMessage(text) : null
   const evidenceAnalysis = hasText ? compareTextEvidence(text, request, profile, { userBank }) : null
 
-  const transactionLevel = transactionAnalysis.riskLevel
-  const rules = firedRules(textAnalysis, evidenceAnalysis, transactionLevel)
-  const level = rules.reduce((current, id) => higher(current, ASSESSMENT_RULES[id].level), transactionLevel)
+  // Model estimate and behaviour, from the request without its message.
+  let mlAnalysis = null
+  let features = null
+  if (history) {
+    if (model) ({ snapshot: mlAnalysis, features } = transactionModelEstimate(model, request, { history, profile, asOf }))
+    else features = extractFeatures({ ...request, requestText: '' }, inputsAsOf(history, profile, asOf))
+  } else if (model) {
+    mlAnalysis = { status: 'UNAVAILABLE', modelVersion: model.modelVersion, asOf, estimate: null, band: null, warnings: ['No ledger history was provided.'] }
+  }
+  const modelBand = mlAnalysis?.status === 'AVAILABLE' ? mlAnalysis.band : null
+
+  // Families.
+  const engineLevel = transactionAnalysis.riskLevel
+  const rules = rulesExcludingLanguage(transactionAnalysis)
+  const transaction = transactionFamily(rules.level, modelBand)
+  const message = messageFamily(textAnalysis, evidenceAnalysis)
+  const contradiction = contradictionFamily(evidenceAnalysis)
+  const agreement = mlAnalysis ? modelAgreement(rules.level, modelBand) : 'UNAVAILABLE'
+  const { level, hybridLevel, compatibilityFloor, rules: fired } = aggregate({ engineLevel, rulesLevel: rules.level, transaction, message, contradiction })
+  const anomalies = features ? behaviourAnomalies(features) : null
+
+  const risk = {
+    transactionRisk: { engine: { score: transactionAnalysis.score, level: engineLevel }, rulesExcludingLanguage: { score: rules.score, level: rules.level }, strength: transaction.strength },
+    mlRisk: { band: modelBand, agreement, strengthened: transaction.strengthened },
+    behaviouralRisk: { anomalies, countedIn: 'transaction' },
+    messageRisk: message,
+    evidenceRisk: {
+      ...contradiction,
+      corroboratedSuspicious: message.corroboratedSuspicious,
+      matches: evidenceAnalysis?.summary.matches ?? 0,
+    },
+  }
 
   const parts = [transactionReasons(transactionAnalysis), textReasons(textAnalysis), evidenceReasons(evidenceAnalysis, textAnalysis)]
   const reasons = parts.flatMap((part) => part.reasons).sort(byTone)
   const mitigating = parts.flatMap((part) => part.mitigating)
+  const supporting = modelSupport(mlAnalysis, rules.level, agreement, transaction.strengthened)
   const steps = verificationSteps(level, textAnalysis, evidenceAnalysis)
 
-  const textPart = textAnalysis
-    ? `Message: ${textAnalysis.classification} (classification confidence ${textAnalysis.confidence.toFixed(2)}, not a fraud probability).`
-    : 'No message text was provided.'
-  const evidencePart = evidenceAnalysis
-    ? `Evidence: ${evidenceAnalysis.summary.conflicts} conflict(s), ${evidenceAnalysis.summary.matches} match(es), ${evidenceAnalysis.summary.suspicious} suspicious signal(s).`
-    : ''
-  const change =
-    level === transactionLevel
-      ? `Level ${level}, as set by the transaction engine.`
-      : `Level raised from ${transactionLevel} to ${level} by: ${rules.filter((id) => ASSESSMENT_RULES[id].level === level).map((id) => ASSESSMENT_RULES[id].text).join(' ')}`
+  const deciding = fired.filter((id) => HYBRID_RULES[id].level === level).map((id) => HYBRID_RULES[id].text)
+  const outcome = compatibilityFloor.applied
+    ? `Level ${level}: ${HYBRID_RULES['compatibility.floor'].text}`
+    : level !== engineLevel
+      ? `Level raised from ${engineLevel} to ${level} by: ${deciding.join(' ')}`
+      : `Level ${level}.${deciding.length ? ` ${deciding.join(' ')}` : ''}`
+  const summary = [
+    `Transaction rules: ${rules.level} (${rules.score}/100 without the language check; original engine ${transactionAnalysis.score}/100, ${engineLevel}).`,
+    mlAnalysis
+      ? mlAnalysis.status === 'AVAILABLE'
+        ? `Model estimate: ${mlAnalysis.band} (synthetic-trained; not calibrated to real-world fraud rates).`
+        : 'Model estimate: unavailable.'
+      : '',
+    textAnalysis
+      ? `Message: ${textAnalysis.classification} (classification confidence ${textAnalysis.confidence.toFixed(2)}, not a fraud probability).`
+      : 'No message text was provided.',
+    evidenceAnalysis
+      ? `Evidence: ${evidenceAnalysis.summary.conflicts} conflict(s), ${evidenceAnalysis.summary.matches} match(es), ${evidenceAnalysis.summary.suspicious} suspicious signal(s).`
+      : '',
+    outcome,
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return {
     version: ASSESSMENT_VERSION,
+    policy: POLICY_VERSION,
+    asOf,
     sources: {
       transaction: `${ENGINE_INFO.id}-${ENGINE_INFO.version}`,
+      model: mlAnalysis?.modelVersion ?? null,
       text: textAnalysis ? CLASSIFIER_VERSION : null,
       evidence: evidenceAnalysis ? 'evidence-comparison' : null,
     },
     transactionAnalysis,
+    mlAnalysis,
     textAnalysis,
     evidenceAnalysis,
+    risk,
     combinedAssessment: {
       level,
       label: RISK_LEVELS[level].label,
-      transactionLevel,
+      hybridLevel,
+      compatibilityFloor,
+      transactionLevel: engineLevel,
       transactionScore: transactionAnalysis.score,
-      raisedByTextOrEvidence: level !== transactionLevel,
-      rules,
+      raisedByTextOrEvidence: level !== engineLevel,
+      rules: fired,
+      families: { transaction: transaction.strength, message: message.strength, contradiction: contradiction.strength },
       reasons,
       mitigating,
+      supporting,
       verification: { recommended: level !== 'LOW', steps },
-      summary: [`Transaction engine: ${transactionLevel} (score ${transactionAnalysis.score}/100).`, textPart, evidencePart, change].filter(Boolean).join(' '),
+      summary,
     },
   }
 }

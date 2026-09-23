@@ -33,6 +33,7 @@ function runAnalysis(ledger, txId) {
 }
 const analysed = (ledger, verificationCase) => find(runAnalysis(ledger, find(ledger, verificationCase).id), verificationCase)
 const withoutTimestamp = ({ analysedAt, ...analysis }) => analysis
+const AS_OF = NOW.toISOString()
 
 describe('pending standing-order flow — demo behaviour', () => {
   test('the three demos keep 100 / LOW, 69 / MEDIUM, 8 / HIGH', () => {
@@ -67,7 +68,7 @@ describe('pending standing-order flow — message and evidence', () => {
       assert.equal(requestMessage(find(ledger, 'LEGITIMATE')), null)
       assert.equal(tx.assessment.textAnalysis, null)
       assert.equal(tx.assessment.evidenceAnalysis, null)
-      assert.deepEqual(tx.assessment.sources, { transaction: 'rules-1.0.0', text: null, evidence: null })
+      assert.deepEqual(tx.assessment.sources, { transaction: 'rules-1.0.0', model: 'fraud-lr-1.1.0', text: null, evidence: null })
       assert.equal(tx.assessment.combined.level, tx.analysis.riskLevel)
     }
   })
@@ -126,14 +127,21 @@ describe('pending standing-order flow — stored state', () => {
     assert.deepEqual(ledger, snapshot)
   })
 
-  test('repeated analysis is deterministic', () => {
+  test('repeated analysis is deterministic for the same analysis time', () => {
     const ledger = createLedger({ GREY: { requestText: LEGIT_TEXT } })
     const tx = find(ledger, 'GREY')
-    const first = assessPendingRequest(tx, ledger.transactions, USER)
-    const second = assessPendingRequest(tx, ledger.transactions, USER)
+    const analysis = { ...analyseStandingOrder(tx, deriveUserProfile(ledger.transactions)), analysedAt: AS_OF }
+    const first = assessPendingRequest(tx, ledger.transactions, USER, { analysis })
+    const second = assessPendingRequest(tx, ledger.transactions, USER, { analysis })
     assert.deepEqual(second.assessment, first.assessment)
-    assert.deepEqual(withoutTimestamp(second.analysis), withoutTimestamp(first.analysis))
+    assert.equal(first.assessment.asOf, AS_OF)
     assert.deepEqual(JSON.parse(JSON.stringify(first.assessment)), first.assessment)
+    // Two separate analyses differ only in their timestamp.
+    const a = assessPendingRequest(tx, ledger.transactions, USER).assessment
+    const b = assessPendingRequest(tx, ledger.transactions, USER).assessment
+    const untimed = ({ asOf, mlAnalysis, ...rest }) => ({ ...rest, mlAnalysis: { ...mlAnalysis, asOf: null } })
+    assert.deepEqual(untimed(b), untimed(a))
+    assert.deepEqual(withoutTimestamp(assessPendingRequest(tx, ledger.transactions, USER).analysis), withoutTimestamp(analysis))
   })
 
   test('transactions analysed before the assessment layer fall back to the engine level', () => {
@@ -163,5 +171,64 @@ describe('pending standing-order flow — decisions', () => {
     const flagged = find(requestMoreInformation(USER.id, ledger, find(ledger, 'FRAUD').id, { items: ['Invoice'], note: '' }), 'FRAUD')
     assert.equal(flagged.status, 'FLAGGED')
     assert.equal(find(rejectTransaction(USER.id, ledger, find(ledger, 'FRAUD').id), 'FRAUD').status, 'REJECTED')
+  })
+})
+
+describe('pending standing-order flow — Stage 5 snapshot', () => {
+  test('the stored snapshot carries the model estimate, families and asOf, and no raw text', () => {
+    const ledger = createLedger()
+    const expected = { LEGITIMATE: [0.0046, 'LOW', 'LOW'], GREY: [0.0958, 'ELEVATED', 'MEDIUM'], FRAUD: [0.9999, 'HIGH', 'HIGH'] }
+    for (const [key, [estimate, band, level]] of Object.entries(expected)) {
+      const tx = analysed(ledger, key)
+      const { assessment } = tx
+      assert.equal(assessment.version, 'assessment-2.0.0')
+      assert.equal(assessment.policy, 'hybrid-1')
+      assert.equal(assessment.asOf, tx.analysis.analysedAt, key)
+      assert.equal(assessment.mlAnalysis.asOf, assessment.asOf, key)
+      assert.deepEqual([assessment.mlAnalysis.estimate, assessment.mlAnalysis.band], [estimate, band], key)
+      assert.equal(assessment.combined.level, level, key)
+      assert.deepEqual(Object.keys(assessment.risk), ['transactionRisk', 'mlRisk', 'behaviouralRisk', 'messageRisk', 'evidenceRisk'])
+      assert.ok(!('transactionAnalysis' in assessment))
+      assert.ok(!JSON.stringify(assessment).includes(tx.requestText), `${key}: raw text stored`)
+    }
+  })
+
+  test('reopening reads the stored snapshot; later ledger changes do not alter it', () => {
+    const base = createLedger()
+    let ledger = runAnalysis(base, find(base, 'GREY').id)
+    const grey = find(ledger, 'GREY')
+    const stored = structuredClone(grey.assessment)
+    // The ledger moves on: another request is analysed and approved, and a
+    // later settled payment is added.
+    ledger = runAnalysis(ledger, find(ledger, 'LEGITIMATE').id)
+    ledger = approveTransaction(USER.id, ledger, find(ledger, 'LEGITIMATE').id)
+    const later = { ...ledger.transactions.find((tx) => tx.status === 'APPROVED' && !tx.decision), id: 'later', amount: 99000, createdAt: '2099-01-01T00:00:00.000Z' }
+    ledger = { ...ledger, transactions: [...ledger.transactions, later] }
+    assert.deepEqual(find(ledger, 'GREY').assessment, stored)
+    assert.equal(decisionLevel(find(ledger, 'GREY')), 'MEDIUM')
+
+    // Re-running with the same analysis time on the later ledger reproduces the model result.
+    const again = assessPendingRequest(grey, ledger.transactions, USER, { analysis: grey.analysis }).assessment
+    assert.deepEqual(again.mlAnalysis, stored.mlAnalysis)
+    assert.equal(again.combined.level, stored.combined.level)
+  })
+
+  test('an old Stage 4 assessment still gates decisions', () => {
+    const ledger = createLedger()
+    const tx = find(ledger, 'LEGITIMATE')
+    const analysis = analyseStandingOrder(tx, deriveUserProfile(ledger.transactions))
+    const stage4 = (level) => ({
+      version: 'assessment-1.0.0',
+      sources: { transaction: 'rules-1.0.0', text: 'text-rules-1.0.0', evidence: 'evidence-comparison' },
+      textAnalysis: classifyMessage(CODE_SCAM),
+      evidenceAnalysis: null,
+      combined: { level, label: level, transactionLevel: 'LOW', transactionScore: 100, raisedByTextOrEvidence: level !== 'LOW', rules: [], reasons: [], mitigating: [], verification: { recommended: level !== 'LOW', steps: [] }, summary: '' },
+    })
+    const medium = saveAnalysis(USER.id, ledger, tx.id, analysis, stage4('MEDIUM'))
+    assert.equal(decisionLevel(find(medium, 'LEGITIMATE')), 'MEDIUM')
+    assert.throws(() => approveTransaction(USER.id, medium, tx.id), /Confirm you have checked/)
+    assert.equal(find(approveTransaction(USER.id, medium, tx.id, { acknowledgedWarnings: true }), 'LEGITIMATE').status, 'APPROVED')
+    const high = saveAnalysis(USER.id, ledger, tx.id, analysis, stage4('HIGH'))
+    assert.throws(() => approveTransaction(USER.id, high, tx.id, { acknowledgedWarnings: true }), /High-risk/)
   })
 })

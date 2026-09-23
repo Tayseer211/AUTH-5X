@@ -12,8 +12,11 @@ import { PREPROCESSOR_VERSION, transformFeatures } from './preprocess.js'
 // carries the preprocessing learnt at training time, so a new request is
 // encoded exactly as the training records were.
 //
-// Not wired into the app yet: the rule engine (engine.js) still produces the
-// scores the UI shows.
+// Used by the app through the hybrid assessment (Stage 5): ml/explain.js
+// scores the request without its message and shows the result as a
+// synthetic-trained model estimate in a LOW / ELEVATED / HIGH band, never as
+// a probability of fraud. The rule engine (engine.js) still produces the
+// transaction score the UI shows.
 
 export const MODEL_TYPE = 'logistic-regression'
 
