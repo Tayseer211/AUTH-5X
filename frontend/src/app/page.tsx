@@ -1,4 +1,3 @@
-import { AuditLog } from "@/components/AuditLog";
 import { CallToAction, Footer } from "@/components/Footer";
 import { Hero } from "@/components/Hero";
 import { HowItWorks } from "@/components/HowItWorks";
@@ -13,7 +12,6 @@ export default function Home() {
         <Hero />
         <Products />
         <HowItWorks />
-        <AuditLog />
         <CallToAction />
       </main>
       <Footer />

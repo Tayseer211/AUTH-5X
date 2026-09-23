@@ -1,12 +1,13 @@
+import Link from "next/link";
 import { Logo } from "./Logo";
 import { ArrowRight } from "./icons";
 
 const productLinks = [
-  { href: "#products", label: "Standing Order Protection" },
-  { href: "#products", label: "AI Receipt Forensics" },
-  { href: "#products", label: "Smart Refund QR" },
-  { href: "#products", label: "Merchant Verifier" },
-  { href: "#audit-log", label: "Live Audit Log" },
+  { href: "/#products", label: "Standing Order Protection" },
+  { href: "/#products", label: "AI Receipt Forensics" },
+  { href: "/#products", label: "Smart Refund QR" },
+  { href: "/#products", label: "Merchant Verifier" },
+  { href: "/audit-log", label: "Live Audit Log" },
 ];
 
 export function CallToAction() {
@@ -65,9 +66,9 @@ export function Footer() {
           <ul className="mt-4 space-y-2.5">
             {productLinks.map((l) => (
               <li key={l.label}>
-                <a href={l.href} className="text-sm text-body transition-colors hover:text-ink">
+                <Link href={l.href} className="text-sm text-body transition-colors hover:text-ink">
                   {l.label}
-                </a>
+                </Link>
               </li>
             ))}
           </ul>

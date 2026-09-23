@@ -6,9 +6,9 @@ import { Logo } from "./Logo";
 import { ArrowRight, Close, Menu } from "./icons";
 
 const links = [
-  { href: "#products", label: "Products" },
-  { href: "#how-it-works", label: "How it works" },
-  { href: "#audit-log", label: "Audit log" },
+  { href: "/#products", label: "Products" },
+  { href: "/#how-it-works", label: "How it works" },
+  { href: "/audit-log", label: "Audit log" },
 ];
 
 export function Nav() {
@@ -39,30 +39,30 @@ export function Nav() {
 
         <div className="hidden items-center gap-8 md:flex">
           {links.map((link) => (
-            <a
+            <Link
               key={link.href}
               href={link.href}
               className="text-[15px] font-medium text-ink/80 transition-colors hover:text-ink"
             >
               {link.label}
-            </a>
+            </Link>
           ))}
         </div>
 
         <div className="hidden items-center gap-5 md:flex">
-          <a
-            href="#products"
+          <Link
+            href="/signin"
             className="text-[15px] font-medium text-ink/80 transition-colors hover:text-ink"
           >
-            Verify a refund
-          </a>
-          <a
-            href="#products"
+            Sign in
+          </Link>
+          <Link
+            href="/signup"
             className="group inline-flex items-center gap-1 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink/85"
           >
             Get started
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-          </a>
+          </Link>
         </div>
 
         <button
@@ -79,22 +79,27 @@ export function Nav() {
       {open && (
         <div className="border-t border-line bg-white px-4 pt-2 pb-5 md:hidden">
           {links.map((link) => (
-            <a
+            <Link
               key={link.href}
               href={link.href}
               onClick={() => setOpen(false)}
               className="block py-3 text-base font-medium text-ink"
             >
               {link.label}
-            </a>
+            </Link>
           ))}
-          <a
-            href="#products"
-            onClick={() => setOpen(false)}
+          <Link
+            href="/signin"
+            className="block py-3 text-base font-medium text-ink"
+          >
+            Sign in
+          </Link>
+          <Link
+            href="/signup"
             className="mt-3 flex items-center justify-center gap-1 rounded-full bg-ink px-4 py-3 text-sm font-semibold text-white"
           >
             Get started <ArrowRight className="size-4" />
-          </a>
+          </Link>
         </div>
       )}
     </header>

@@ -1,5 +1,7 @@
 import type { ComponentType, SVGProps } from "react";
-import { ArrowRight, Check, QrCode, Receipt, Repeat, Scan } from "./icons";
+import Link from "next/link";
+import { AuditLogPreview } from "./AuditLogPreview";
+import { Activity, ArrowRight, Check, QrCode, Receipt, Repeat, Scan } from "./icons";
 
 type Product = {
   eyebrow: string;
@@ -127,6 +129,42 @@ export function Products() {
               </a>
             </article>
           ))}
+
+          <Link
+            href="/audit-log"
+            className="group grid items-center gap-8 rounded-2xl border border-line bg-surface p-7 transition duration-300 hover:-translate-y-1 hover:shadow-[0_30px_60px_-20px_rgb(50_50_93/0.2)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand sm:p-8 md:col-span-2 md:grid-cols-2 md:gap-10"
+          >
+            <div>
+              <div className="flex size-11 items-center justify-center rounded-xl bg-linear-to-br from-[#0a2540] to-[#425466] text-white shadow-sm">
+                <Activity className="size-5" />
+              </div>
+              <p className="mt-6 text-xs font-semibold tracking-wide text-muted uppercase">
+                Every decision
+              </p>
+              <h3 className="mt-1.5 text-xl font-semibold text-ink">Live Audit Log</h3>
+              <p className="mt-3 leading-relaxed text-body">
+                Every standing order check, receipt scan, refund QR and merchant verification
+                is recorded the moment it runs, so you can see what was stopped and why.
+              </p>
+              <ul className="mt-5 space-y-2">
+                {[
+                  "Updates live as checks run",
+                  "Risk score and outcome for every event",
+                  "Filter by tool to find any decision",
+                ].map((pt) => (
+                  <li key={pt} className="flex gap-2 text-[15px] text-body">
+                    <Check className="mt-0.5 size-4 shrink-0 text-brand" strokeWidth={2.5} />
+                    {pt}
+                  </li>
+                ))}
+              </ul>
+              <span className="mt-7 inline-flex items-center gap-1 text-[15px] font-semibold text-brand">
+                Open audit log
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+              </span>
+            </div>
+            <AuditLogPreview />
+          </Link>
         </div>
       </div>
     </section>

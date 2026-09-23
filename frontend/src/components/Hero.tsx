@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { DecorativeQr } from "./DecorativeQr";
 import { ArrowRight, Check, Sparkles } from "./icons";
 
@@ -157,13 +158,13 @@ export function Hero() {
               Start now
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>
-            <a
-              href="#audit-log"
+            <Link
+              href="/audit-log"
               className="group inline-flex items-center gap-1.5 rounded-full px-5 py-3 text-[15px] font-semibold text-ink ring-1 ring-ink/15 transition hover:bg-white/60"
             >
               See live activity
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-            </a>
+            </Link>
           </div>
 
           <ul className="mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm text-body">

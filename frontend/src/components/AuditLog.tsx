@@ -12,7 +12,7 @@ import {
 } from "@/lib/audit-log";
 import { Play, QrCode, Receipt, Repeat, Scan, Trash } from "./icons";
 
-const TYPE_META: Record<
+export const TYPE_META: Record<
   AuditEventType,
   { label: string; plural: string; icon: ComponentType<SVGProps<SVGSVGElement>>; chip: string }
 > = {
@@ -48,7 +48,7 @@ const RISK_STYLE: Record<RiskLevel, { label: string; className: string; dot: str
   high: { label: "High", className: "text-red-700", dot: "bg-red-500" },
 };
 
-const STATUS_STYLE: Record<AuditStatus, { label: string; className: string }> = {
+export const STATUS_STYLE: Record<AuditStatus, { label: string; className: string }> = {
   approved: { label: "Approved", className: "bg-emerald-50 text-emerald-700 ring-emerald-600/15" },
   verified: { label: "Verified", className: "bg-emerald-50 text-emerald-700 ring-emerald-600/15" },
   issued: { label: "Issued", className: "bg-sky-50 text-sky-700 ring-sky-600/15" },
@@ -69,7 +69,7 @@ const FILTERS: { key: Filter; label: string }[] = [
 
 const noopSubscribe = () => () => {};
 
-function useHydrated() {
+export function useHydrated() {
   return useSyncExternalStore(
     noopSubscribe,
     () => true,
@@ -86,7 +86,7 @@ function useNow(intervalMs: number) {
   return now;
 }
 
-function timeAgo(timestamp: number, now: number) {
+export function timeAgo(timestamp: number, now: number) {
   const seconds = Math.max(0, Math.round((now - timestamp) / 1000));
   if (seconds < 10) return "Just now";
   if (seconds < 60) return `${seconds}s ago`;
@@ -97,7 +97,7 @@ function timeAgo(timestamp: number, now: number) {
   return new Date(timestamp).toLocaleDateString();
 }
 
-export function AuditLog() {
+export function AuditLog({ page = false }: { page?: boolean }) {
   const events = useAuditLog();
   const hydrated = useHydrated();
   const now = useNow(15_000);
@@ -111,6 +111,8 @@ export function AuditLog() {
   ).length;
   const hasSamples = events.some((e) => e.sample);
 
+  const Heading = page ? "h1" : "h2";
+
   const tiles = [
     { label: "Events logged", value: events.length },
     { label: "Threats stopped", value: stopped },
@@ -118,7 +120,10 @@ export function AuditLog() {
   ];
 
   return (
-    <section id="audit-log" className="scroll-mt-16 bg-surface py-24 sm:py-32">
+    <section
+      id="audit-log"
+      className={`scroll-mt-16 bg-surface pb-24 sm:pb-32 ${page ? "flex-1 pt-32 sm:pt-36" : "pt-24 sm:pt-32"}`}
+    >
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
@@ -129,9 +134,9 @@ export function AuditLog() {
               </span>
               Live audit log
             </p>
-            <h2 className="mt-3 text-4xl font-bold tracking-tight text-balance text-ink sm:text-5xl">
+            <Heading className="mt-3 text-4xl font-bold tracking-tight text-balance text-ink sm:text-5xl">
               Every decision, recorded as it happens.
-            </h2>
+            </Heading>
             <p className="mt-5 text-lg leading-relaxed text-body">
               Each standing order check, receipt scan, refund QR and merchant verification
               is added here the moment it runs.
