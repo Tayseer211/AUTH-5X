@@ -1,0 +1,59 @@
+.account-created {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.account-created__icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.account-created__icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.account-created__title {
+  text-align: center;
+}
+
+.account-created__note {
+  margin: 16px 0 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.summary {
+  margin: 0 0 22px;
+  padding: 16px 18px;
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.summary div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.summary dt {
+  font-size: 0.84375rem;
+  color: var(--color-text-muted);
+}
+
+.summary dd {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: right;
+  word-break: break-word;
+}

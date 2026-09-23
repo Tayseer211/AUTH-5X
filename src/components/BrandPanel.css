@@ -1,0 +1,125 @@
+.brand-panel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding: 48px 40px;
+  background: linear-gradient(
+    160deg,
+    var(--color-primary-dark) 0%,
+    var(--color-primary) 45%,
+    var(--color-teal) 100%
+  );
+  color: #ffffff;
+}
+
+.brand-panel__glow {
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent 55%),
+    radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.12), transparent 50%);
+  pointer-events: none;
+}
+
+.brand-panel__content {
+  position: relative;
+  z-index: 1;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.brand-panel__logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin-bottom: 32px;
+}
+
+.brand-panel__logo-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.brand-panel__logo-dot {
+  color: var(--color-teal-light);
+}
+
+.brand-panel__tagline {
+  margin: 0 0 16px;
+  font-size: 2rem;
+  line-height: 1.25;
+  font-weight: 700;
+}
+
+.brand-panel__description {
+  margin: 0 0 32px;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.brand-panel__benefits {
+  list-style: none;
+  margin: 0 0 40px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.brand-panel__benefits li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.9375rem;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.brand-panel__benefit-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--color-teal-light);
+  margin-top: 1px;
+}
+
+.brand-panel__illustration {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.brand-panel__illustration-icon {
+  width: 44px;
+  height: 44px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+@media (max-width: 959px) {
+  .brand-panel {
+    padding: 40px 24px;
+  }
+
+  .brand-panel__tagline {
+    font-size: 1.5rem;
+  }
+
+  .brand-panel__description {
+    margin-bottom: 24px;
+  }
+
+  .brand-panel__benefits {
+    margin-bottom: 0;
+  }
+
+  .brand-panel__illustration {
+    display: none;
+  }
+}

@@ -1,0 +1,48 @@
+.score-ring {
+  position: relative;
+  flex-shrink: 0;
+  width: 116px;
+  height: 116px;
+}
+
+.score-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.score-ring circle {
+  fill: none;
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+
+.score-ring__track {
+  stroke: var(--color-bg);
+}
+
+.score-ring__value {
+  transition: stroke-dashoffset 0.8s ease;
+}
+
+.score-ring--success .score-ring__value {
+  stroke: var(--color-success);
+}
+
+.score-ring--warning .score-ring__value {
+  stroke: var(--color-warning);
+}
+
+.score-ring--danger .score-ring__value {
+  stroke: var(--color-danger);
+}
+
+.score-ring__number {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 1.6875rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
