@@ -1,113 +1,108 @@
-import AppShell from '../components/AppShell.jsx'
-import TransactionRow from '../components/TransactionRow.jsx'
-import { ShieldCheckIcon, CheckCircleIcon, AlertTriangleIcon } from '../components/icons.jsx'
-import './DashboardPage.css'
+import { useState } from 'react'
+import Button from '../components/Button.jsx'
+import Icon from '../components/Icon.jsx'
+import TransactionList from '../components/TransactionList.jsx'
+import ReceiptWarning from '../components/ReceiptWarning.jsx'
+import { Alert } from '../components/Feedback.jsx'
+import { Link, navigate } from '../router/router.jsx'
+import { useApp } from '../state/AppProvider.jsx'
+import { sortNewestFirst } from '../transactions/ledger.js'
 
-const MOCK_BALANCE = 18420.55
+// Each tile links to the history page pre-filtered to what it counts.
+const STAT_TILES = [
+  { key: 'total', label: 'Total transactions', filter: 'all', tone: 'navy' },
+  { key: 'approved', label: 'Approved', filter: 'approved', tone: 'success' },
+  { key: 'pending', label: 'Pending', filter: 'pending', tone: 'info' },
+  { key: 'flagged', label: 'Flagged', filter: 'flagged', tone: 'warning' },
+]
 
-function formatCurrency(value) {
-  return `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+// TIMEZONE: uses the runtime's local hour.
+function greeting() {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 18) return 'Good afternoon'
+  return 'Good evening'
 }
 
-// Landing screen after login: account balance, pending-review count, an
-// approval banner CTA, a short tips card, and the recent-activity list.
-function DashboardPage({ user, transactions, pendingCount, onNavigate, onSelectTransaction, onSignOut, onResetDemo }) {
-  const flaggedCount = transactions.filter((tx) => tx.status === 'flagged').length
-  const protectedAmount = transactions
-    .filter((tx) => tx.status === 'denied')
-    .reduce((sum, tx) => sum + tx.amount, 0)
+function DashboardPage() {
+  const { user, stats, transactions, replayDemo } = useApp()
+  const [error, setError] = useState('')
+  const recent = sortNewestFirst(transactions).slice(0, 6)
+  const awaiting = stats.awaitingApproval
+
+  function handleReplay() {
+    try {
+      replayDemo()
+      setError('')
+      navigate('/review')
+    } catch (replayError) {
+      setError(replayError.message)
+    }
+  }
 
   return (
-    <AppShell
-      user={user}
-      activeView="dashboard"
-      pendingCount={pendingCount}
-      onNavigate={onNavigate}
-      onSignOut={onSignOut}
-      onResetDemo={onResetDemo}
-    >
-      <div className="page">
-        <div className="page__header">
-          <div>
-            <p className="page__eyebrow">Welcome back</p>
-            <h1 className="page__title">{user.name.split(' ')[0]}&apos;s dashboard</h1>
-          </div>
+    <div className="fa-page">
+      <header className="fa-page__header">
+        <div>
+          <p className="fa-page__eyebrow">{greeting()}</p>
+          <h1 className="fa-page__title">Welcome back, {user.fullName.split(' ')[0]}</h1>
         </div>
+      </header>
 
-        <div className="stats">
-          <div className="stat stat--primary">
-            <span className="stat__label">Account balance</span>
-            <span className="stat__value">{formatCurrency(MOCK_BALANCE)}</span>
-          </div>
-          <button type="button" className="stat stat--warning" onClick={() => onNavigate('approvals')}>
-            <span className="stat__label">Pending approvals</span>
-            <span className="stat__value">{pendingCount}</span>
-          </button>
-          <div className="stat stat--danger">
-            <span className="stat__label">Flagged this month</span>
-            <span className="stat__value">{flaggedCount}</span>
-          </div>
-          <div className="stat stat--success">
-            <span className="stat__label">Protected from fraud</span>
-            <span className="stat__value">{formatCurrency(protectedAmount)}</span>
-          </div>
-        </div>
+      {error && <Alert tone="danger">{error}</Alert>}
 
-        {pendingCount > 0 ? (
-          <div className="approval-banner">
-            <span className="approval-banner__count">{pendingCount}</span>
-            <div className="approval-banner__text">
-              <h2>You have {pendingCount} payment{pendingCount === 1 ? '' : 's'} waiting for review</h2>
-              <p>Verify these requests before any money leaves your account.</p>
-            </div>
-            <button type="button" className="btn btn--primary approval-banner__cta" onClick={() => onNavigate('approvals')}>
-              Review now
-            </button>
+      {awaiting > 0 ? (
+        <section className="fa-approval-banner" aria-labelledby="approval-title">
+          <div className="fa-approval-banner__count" aria-hidden="true">
+            {awaiting}
           </div>
-        ) : (
-          <div className="approval-banner approval-banner--clear">
-            <span className="approval-banner__count">
-              <CheckCircleIcon />
-            </span>
-            <div className="approval-banner__text">
-              <h2>You&apos;re all caught up</h2>
-              <p>No payment requests are waiting for review right now.</p>
-            </div>
+          <div className="fa-approval-banner__text">
+            <h2 id="approval-title">
+              {awaiting} {awaiting === 1 ? 'transaction requires' : 'transactions require'} your approval
+            </h2>
+            <p>Review suspicious or unusual transactions before approving them.</p>
           </div>
-        )}
+          <Button href="#/review" size="lg" className="fa-approval-banner__cta">
+            Review transactions
+          </Button>
+        </section>
+      ) : (
+        <section className="fa-approval-banner fa-approval-banner--clear" aria-labelledby="approval-title">
+          <div className="fa-approval-banner__count" aria-hidden="true">
+            <Icon name="check" size={26} strokeWidth={2.2} />
+          </div>
+          <div className="fa-approval-banner__text">
+            <h2 id="approval-title">You&apos;re all caught up</h2>
+            <p>There are no transactions waiting for your approval.</p>
+          </div>
+          <Button variant="secondary" icon="refresh" onClick={handleReplay} className="fa-approval-banner__cta">
+            Replay demo requests
+          </Button>
+        </section>
+      )}
 
-        <div className="dashboard-grid">
-          <div className="card">
-            <div className="card__header">
-              <h2>Recent activity</h2>
-            </div>
-            <ul className="tx-list">
-              {transactions.map((tx) => (
-                <TransactionRow key={tx.id} tx={tx} onSelect={onSelectTransaction} />
-              ))}
-            </ul>
-          </div>
+      <section className="fa-stats" aria-label="Transaction overview">
+        {STAT_TILES.map((tile) => (
+          <Link key={tile.key} to={`/history?filter=${tile.filter}`} className={`fa-stat fa-stat--${tile.tone}`}>
+            <span className="fa-stat__label">{tile.label}</span>
+            <span className="fa-stat__value">{stats[tile.key]}</span>
+          </Link>
+        ))}
+      </section>
 
-          <div className="edu-card">
-            <span className="edu-card__icon">
-              <ShieldCheckIcon />
-            </span>
-            <div>
-              <h3 className="edu-card__title">Spot a payment redirect scam</h3>
-              <p>
-                Be wary of any request that suddenly asks you to send money to a &quot;new&quot; account,
-                especially if it comes with urgency ( &quot;before end of day&quot;) or claims the usual
-                account is unavailable.
-              </p>
-              <p>
-                <AlertTriangleIcon className="edu-card__inline-icon" /> When in doubt, confirm the
-                request with the recipient through a separate, trusted channel before approving.
-              </p>
-            </div>
+      <div className="fa-dashboard-grid">
+        <section className="fa-card" aria-labelledby="recent-title">
+          <div className="fa-card__header">
+            <h2 id="recent-title">Recent activity</h2>
+            <Link to="/history" className="fa-card__link">
+              View all
+            </Link>
           </div>
-        </div>
+          <TransactionList transactions={recent} />
+        </section>
+        <ReceiptWarning />
       </div>
-    </AppShell>
+    </div>
   )
 }
 

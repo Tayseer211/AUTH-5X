@@ -1,128 +1,54 @@
-import { useEffect, useRef, useState } from 'react'
-import { ShieldCheckIcon, LogOutIcon, ChevronDownIcon } from './icons.jsx'
-import './AppShell.css'
+import Logo from './Logo.jsx'
+import ProfileMenu from './ProfileMenu.jsx'
+import { Link } from '../router/router.jsx'
+import { useApp } from '../state/AppProvider.jsx'
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'approvals', label: 'Approvals' },
+  { to: '/dashboard', label: 'Dashboard', match: (path) => path === '/dashboard' },
+  {
+    to: '/review',
+    label: 'Approvals',
+    match: (path) => path === '/review' || path.startsWith('/verify') || path.startsWith('/proof'),
+    countKey: 'awaitingApproval',
+  },
+  { to: '/history', label: 'Transaction history', shortLabel: 'History', match: (path) => path === '/history' },
 ]
 
-function initials(name) {
-  return name
-    .split(' ')
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-}
-
-// Shared shell for every screen after login: sticky header with nav +
-// profile menu, wrapping whatever page content is passed as children.
-function AppShell({ user, activeView, pendingCount, onNavigate, onSignOut, onResetDemo, children }) {
-  const [menuOpen, setMenuOpen] = useState(false)
-  const menuRef = useRef(null)
-
-  useEffect(() => {
-    if (!menuOpen) return undefined
-
-    function handleClickOutside(event) {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setMenuOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [menuOpen])
+// Signed-in layout: header with nav + account menu, page content, footer.
+function AppShell({ path, children }) {
+  const { stats } = useApp()
 
   return (
-    <div className="app-shell">
-      <header className="app-shell__header">
-        <div className="app-shell__bar">
-          <button type="button" className="app-shell__logo" onClick={() => onNavigate('dashboard')}>
-            <ShieldCheckIcon className="app-shell__logo-icon" />
-            <span>
-              fraud<span className="app-shell__logo-dot">.</span>auth
-            </span>
-          </button>
-
-          <nav className="app-shell__nav">
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={`nav-link${activeView === item.id ? ' is-active' : ''}`}
-                onClick={() => onNavigate(item.id)}
-              >
-                {item.label}
-                {item.id === 'approvals' && pendingCount > 0 && (
-                  <span className="nav-link__count">{pendingCount}</span>
-                )}
-              </button>
-            ))}
+    <div className="fa-shell">
+      <header className="fa-shell__header fa-no-print">
+        <div className="fa-shell__bar">
+          <Link to="/dashboard" className="fa-shell__logo" aria-label="fraud.auth dashboard">
+            <Logo size={28} />
+          </Link>
+          <nav className="fa-shell__nav" aria-label="Main">
+            {NAV_ITEMS.map((item) => {
+              const active = item.match(path)
+              const count = item.countKey ? stats[item.countKey] : 0
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`fa-nav-link ${item.shortLabel ? 'fa-nav-link--dual' : ''} ${active ? 'is-active' : ''}`}
+                  aria-current={active ? 'page' : undefined}
+                >
+                  <span className="fa-nav-link__full">{item.label}</span>
+                  {item.shortLabel && <span className="fa-nav-link__short">{item.shortLabel}</span>}
+                  {count > 0 && <span className="fa-nav-link__count">{count}</span>}
+                </Link>
+              )
+            })}
           </nav>
-
-          <div className="profile-menu" ref={menuRef}>
-            <button
-              type="button"
-              className="profile-menu__trigger"
-              onClick={() => setMenuOpen((prev) => !prev)}
-              aria-expanded={menuOpen}
-            >
-              <span className="avatar">{initials(user.name)}</span>
-              <span className="profile-menu__name">{user.name}</span>
-              <ChevronDownIcon className="profile-menu__chevron" />
-            </button>
-
-            {menuOpen && (
-              <div className="profile-menu__panel">
-                <div className="profile-menu__head">
-                  <span className="avatar avatar--lg">{initials(user.name)}</span>
-                  <div>
-                    <div className="profile-menu__fullname">{user.name}</div>
-                    <div className="profile-menu__email">{user.email}</div>
-                  </div>
-                </div>
-
-                <dl className="profile-menu__details">
-                  <div>
-                    <dt>Linked bank</dt>
-                    <dd>{user.bankName}</dd>
-                  </div>
-                  <div>
-                    <dt>Account</dt>
-                    <dd className="mono">•••• {user.accountLast4}</dd>
-                  </div>
-                </dl>
-
-                <button
-                  type="button"
-                  className="btn btn--secondary btn--block"
-                  onClick={() => {
-                    onResetDemo()
-                    setMenuOpen(false)
-                  }}
-                >
-                  Reset demo data
-                </button>
-                <button
-                  type="button"
-                  className="btn btn--secondary btn--block"
-                  onClick={onSignOut}
-                >
-                  <LogOutIcon className="profile-menu__sign-out-icon" />
-                  Sign out
-                </button>
-              </div>
-            )}
-          </div>
+          <ProfileMenu />
         </div>
       </header>
-
-      <main className="app-shell__main">{children}</main>
-
-      <footer className="app-shell__footer">
-        fraud.auth is a simulated hackathon prototype. No real bank accounts or payments are involved.
+      <main className="fa-shell__main">{children}</main>
+      <footer className="fa-shell__footer fa-no-print">
+        fraud.auth hackathon prototype. Simulated banking data only; no real accounts or payments are involved.
       </footer>
     </div>
   )

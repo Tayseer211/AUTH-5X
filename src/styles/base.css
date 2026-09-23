@@ -1,0 +1,117 @@
+
+:root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+:root {
+  /* Brand */
+  --fa-navy: #0b2540;
+  --fa-navy-2: #143556;
+  --fa-teal: #178089;
+  --fa-teal-strong: #106068;
+  --fa-teal-tint: #e6f4f3;
+
+  /* Neutrals */
+  --fa-bg: #f4f7f9;
+  --fa-surface: #ffffff;
+  --fa-ink: #101826;
+  --fa-slate: #56657a;
+  --fa-slate-light: #8a97a3;
+  --fa-border: #e1e7ec;
+  --fa-border-strong: #c9d3da;
+
+  /* Status */
+  --fa-success: #1e7a4c;
+  --fa-success-tint: #e7f5ee;
+  --fa-warning: #9a5b00;
+  --fa-warning-tint: #fdf3e1;
+  --fa-danger: #b42d24;
+  --fa-danger-tint: #fcebea;
+  --fa-info: #245e9e;
+  --fa-info-tint: #e8f0fa;
+
+  /* Elevation, radius, type */
+  --fa-shadow-sm: 0 1px 2px rgba(11, 37, 64, 0.05);
+  --fa-shadow: 0 1px 2px rgba(11, 37, 64, 0.04), 0 8px 24px rgba(11, 37, 64, 0.06);
+  --fa-shadow-lg: 0 20px 50px rgba(11, 37, 64, 0.18);
+  --fa-radius-sm: 8px;
+  --fa-radius: 12px;
+  --fa-radius-lg: 18px;
+  --fa-font: ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fa-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--fa-font);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--fa-ink);
+  background: var(--fa-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--fa-teal-strong);
+}
+
+:focus-visible {
+  outline: 2px solid var(--fa-teal);
+  outline-offset: 2px;
+}
+
+.fa-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+  .fa-no-print {
+    display: none !important;
+  }
+}

@@ -1,0 +1,12 @@
+/*
+ * fraud.auth styles, split from the original standing-order prototype
+ * (public/prototype/fraud-auth-prototype.html) without changing any rules.
+ * Import order matches the original stylesheet so the cascade is identical.
+ */
+@import './base.css';
+@import './components.css';
+@import './auth.css';
+@import './shell.css';
+@import './pages.css';
+@import './verification.css';
+@import './receipt.css';
