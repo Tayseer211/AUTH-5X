@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0a2540;
+  --color-body: #425466;
+  --color-muted: #697386;
+  --color-brand: #5a4ff3;
+  --color-brand-dark: #4337d6;
+  --color-surface: #f6f9fc;
+  --color-line: #e3e8ee;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #ffffff;
+  color: var(--color-ink);
+}
+
+/* Skewed, slowly drifting gradient behind the hero. */
+.hero-gradient {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  transform: skewY(-8deg);
+  transform-origin: top left;
+  background: #c3b8ff;
+  mask-image: linear-gradient(100deg, rgb(0 0 0 / 0.18) 0%, rgb(0 0 0 / 0.35) 35%, #000 65%);
+}
+
+.hero-gradient::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background:
+    radial-gradient(at 18% 30%, #ff5f6d 0, transparent 40%),
+    radial-gradient(at 78% 18%, #7fd8ff 0, transparent 45%),
+    radial-gradient(at 62% 72%, #ffc857 0, transparent 40%),
+    radial-gradient(at 35% 85%, #5a4ff3 0, transparent 45%),
+    radial-gradient(at 90% 80%, #a960ee 0, transparent 45%);
+  filter: blur(30px);
+  animation: gradient-drift 20s ease-in-out infinite alternate;
+}
+
+@keyframes gradient-drift {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate(6%, -4%) rotate(10deg);
+  }
+  100% {
+    transform: translate(-5%, 3%) rotate(-8deg);
+  }
+}
+
+/* Highlight for audit log rows that arrive while the page is open. */
+@keyframes row-in {
+  from {
+    background-color: rgb(90 79 243 / 0.12);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.row-in {
+  animation: row-in 2.4s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .hero-gradient::before,
+  .row-in {
+    animation: none;
+  }
+}
