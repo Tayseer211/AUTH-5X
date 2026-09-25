@@ -91,11 +91,12 @@ export function AppProvider({ children }) {
           const { analysis, assessment } = assessPendingRequest(tx, current.transactions, user)
           return saveAnalysis(user.id, current, txId, analysis, assessment)
         }),
-      approve: (txId, options) => updateLedger((current) => approveTransaction(user.id, current, txId, options)),
+      approve: (txId, options) =>
+        updateLedger((current) => approveTransaction(user.id, current, txId, { ...options, payer: { name: user.fullName, bank: user.bank?.code } })),
       requestInfo: (txId, request) => updateLedger((current) => requestMoreInformation(user.id, current, txId, request)),
       reject: (txId) => updateLedger((current) => rejectTransaction(user.id, current, txId)),
       replayDemo: () => updateLedger((current) => replayDemoRequests(user, current)),
-      resetDemo: () => updateLedger(() => resetLedger(user)),
+      resetDemo: () => updateLedger((current) => resetLedger(user, current)),
     }),
     [updateLedger, user],
   )

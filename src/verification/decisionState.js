@@ -9,6 +9,21 @@ export function awaitingDecision(tx) {
   return Boolean(tx?.analysis) && !tx.decision && tx.status === 'PENDING' && Boolean(tx.requiresApproval)
 }
 
+// Whether opening the request must run the fraud pipeline: only when nothing
+// is stored yet. A stored analysis is never recomputed.
+export function needsEngineRun(tx) {
+  return !tx?.analysis
+}
+
+// The phase the verification page opens in: 'analysing' (the progress
+// animation, then the stored result is revealed) for a pending request with a
+// stored analysis, 'results' for a decided one, 'request' (details and the
+// "run" prompt) for a request with no analysis yet.
+export function openingPhase(tx) {
+  if (awaitingDecision(tx)) return 'analysing'
+  return tx?.analysis ? 'results' : 'request'
+}
+
 // --- Warning list -----------------------------------------------------------
 //
 // The same concern can be reported by the transaction engine's language check,

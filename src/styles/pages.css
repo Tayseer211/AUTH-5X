@@ -457,6 +457,16 @@
   flex-shrink: 0;
   color: var(--fa-slate-light);
 }
+/* A row with a QR receipt: the row itself, then its action beneath. */
+.fa-tx-list > li.fa-tx-item > .fa-tx {
+  border-top: 0;
+}
+.fa-tx__actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-bottom: 10px;
+  margin-top: -6px;
+}
 @media (max-width: 560px) {
   .fa-tx__icon {
     display: none;

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Button from '../components/Button.jsx'
 import Icon from '../components/Icon.jsx'
 import Logo from '../components/Logo.jsx'
@@ -5,12 +6,15 @@ import { Alert } from '../components/Feedback.jsx'
 import { Link } from '../router/router.jsx'
 import { useApp } from '../state/AppProvider.jsx'
 import { getBank } from '../data/banks.js'
+import { receiptFor } from '../transactions/receipt.js'
+import QrReceiptModal from '../verification/QrReceiptModal.jsx'
 import { FREQUENCY_LABELS, formatDate, formatMoney, formatTime, maskAccountNumber } from '../utils/format.js'
 
 // Printable, clearly-simulated confirmation for an approved standing order.
 function ProofPage({ txId }) {
   const { user, getTransaction } = useApp()
   const tx = getTransaction(txId)
+  const [qrOpen, setQrOpen] = useState(false)
 
   if (!tx || !tx.proof) {
     return (
@@ -23,6 +27,8 @@ function ProofPage({ txId }) {
   }
 
   const bank = getBank(user.bank.code)
+  // Approvals made before QR receipts existed have none and show no QR action.
+  const receipt = receiptFor(tx)
   const rows = [
     ['Transaction ID', tx.id.replace('txn_', '').toUpperCase()],
     ['Reference', tx.proof.reference],
@@ -75,11 +81,17 @@ function ProofPage({ txId }) {
         </Alert>
         <p className="fa-receipt__footer">Issued by fraud.auth for demonstration purposes. No funds have moved.</p>
       </article>
+      <QrReceiptModal open={qrOpen} tx={tx} onClose={() => setQrOpen(false)} />
       <div className="fa-inline-actions fa-no-print">
         <Button href="#/review">Back to approvals</Button>
         <Button href="#/history" variant="secondary">
           View transaction history
         </Button>
+        {receipt && (
+          <Button variant="secondary" icon="qr" onClick={() => setQrOpen(true)}>
+            View QR Receipt
+          </Button>
+        )}
         <Button variant="ghost" icon="printer" onClick={() => window.print()}>
           Print
         </Button>

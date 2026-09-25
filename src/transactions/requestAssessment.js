@@ -28,11 +28,13 @@ export function requestMessage(tx) {
 // engine analysis to store as `analysis` and the compact assessment to store
 // as `assessment`.
 // `options.analysis` (an existing engine result) and `options.model` are for
-// tests; the app always analyses afresh with the default model.
-export function assessPendingRequest(tx, transactions, user, { analysis = null, model = DEFAULT_MODEL } = {}) {
+// tests; the app always analyses afresh with the default model. `options.profile`
+// lets a caller analysing many requests against the same ledger derive the
+// profile once (pending requests are not part of it, so it is the same for all).
+export function assessPendingRequest(tx, transactions, user, { analysis = null, model = DEFAULT_MODEL, profile = deriveUserProfile(transactions) } = {}) {
   const assessment = assessStandingOrder({
     request: tx,
-    profile: deriveUserProfile(transactions),
+    profile,
     text: requestMessage(tx),
     userBank: user?.bank?.code ?? null,
     analysis,

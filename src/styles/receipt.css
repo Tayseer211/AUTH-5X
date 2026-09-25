@@ -84,3 +84,74 @@
   color: var(--fa-slate-light);
 }
 
+
+/* ---------- QR receipt (modal) ---------- */
+.fa-qr-receipt__code {
+  display: flex;
+  justify-content: center;
+}
+/* Dark on white in every theme: scanners need the contrast. */
+.fa-qr {
+  display: block;
+  width: min(300px, 100%);
+  height: auto;
+  border: 1px solid var(--fa-border);
+  border-radius: var(--fa-radius-sm);
+}
+.fa-qr-receipt__bank {
+  display: flex;
+  justify-content: center;
+}
+/* The bank's logo (or a lettered tile) chosen from the receipt's bank code. */
+.fa-bank-mark {
+  --fa-bank-tint: var(--fa-slate);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.fa-bank-mark[data-bank='MCB'] {
+  --fa-bank-tint: #b42318;
+}
+.fa-bank-mark[data-bank='SBM'] {
+  --fa-bank-tint: #1d4ed8;
+}
+.fa-bank-mark[data-bank='MAUBANK'] {
+  --fa-bank-tint: #0f766e;
+}
+.fa-bank-mark__tile {
+  display: grid;
+  place-items: center;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--fa-bank-tint);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.fa-bank-mark__logo {
+  height: 40px;
+  width: auto;
+}
+.fa-bank-mark__name {
+  font-size: 16px;
+  font-weight: 650;
+}
+.fa-qr-receipt__verified {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fa-success);
+}
+.fa-qr-receipt__note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--fa-slate);
+}

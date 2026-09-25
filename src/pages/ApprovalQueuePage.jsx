@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import Button from '../components/Button.jsx'
 import Icon from '../components/Icon.jsx'
-import { Alert, EmptyState, StatusBadge } from '../components/Feedback.jsx'
+import { Alert, EmptyState, RiskBadge, StatusBadge } from '../components/Feedback.jsx'
 import { navigate } from '../router/router.jsx'
 import { useApp } from '../state/AppProvider.jsx'
 import { FREQUENCY_LABELS, formatDate, formatMoney } from '../utils/format.js'
 
-// Standing orders waiting for a decision, in queue order.
+// Standing orders waiting for a decision, in queue order. Requests already
+// analysed (a generated demo batch is analysed when it is created) show their
+// risk level.
 function ApprovalQueuePage() {
   const { queue, replayDemo } = useApp()
   const [error, setError] = useState('')
@@ -59,7 +61,10 @@ function ApprovalQueuePage() {
               <div className="fa-queue__main">
                 <div className="fa-queue__top">
                   <p className="fa-queue__recipient">{tx.recipient}</p>
-                  <StatusBadge status={tx.status} />
+                  <span className="fa-tx__badges">
+                    {tx.riskLevel && <RiskBadge level={tx.riskLevel} />}
+                    <StatusBadge status={tx.status} />
+                  </span>
                 </div>
                 <p className="fa-queue__meta">
                   <Icon name="repeat" size={15} />

@@ -9,7 +9,7 @@ import RequestDetails from '../verification/RequestDetails.jsx'
 import AnalysisProgress from '../verification/AnalysisProgress.jsx'
 import AnalysisResults from '../verification/AnalysisResults.jsx'
 import AssessmentSummary from '../verification/AssessmentSummary.jsx'
-import { awaitingDecision } from '../verification/decisionState.js'
+import { awaitingDecision, needsEngineRun, openingPhase } from '../verification/decisionState.js'
 import DecisionPanel from '../verification/DecisionPanel.jsx'
 import RequestInfoModal from '../verification/RequestInfoModal.jsx'
 
@@ -36,7 +36,10 @@ const DECISION_OUTCOMES = {
 function VerifyPage({ txId }) {
   const { user, getTransaction, runAnalysis, approve, requestInfo, reject } = useApp()
   const tx = getTransaction(txId)
-  const [phase, setPhase] = useState('request')
+  // A pending request that already has a stored analysis (the demo batch
+  // analyses at reset) still opens with the progress animation; it only
+  // presents the stored result, see finishAnalysis.
+  const [phase, setPhase] = useState(() => openingPhase(tx))
   const [error, setError] = useState('')
   const [approving, setApproving] = useState(false)
   const [infoModalOpen, setInfoModalOpen] = useState(false)
@@ -54,10 +57,12 @@ function VerifyPage({ txId }) {
   const decided = Boolean(tx.decision)
   const analysis = tx.analysis
 
-  // Called when the progress animation finishes: the engine runs here.
+  // Called when the progress animation finishes. The engine runs here only for a
+  // request that has no stored analysis; otherwise the stored analysis and
+  // assessment are revealed as they are.
   function finishAnalysis() {
     try {
-      runAnalysis(tx.id)
+      if (needsEngineRun(tx)) runAnalysis(tx.id)
       setPhase('results')
     } catch (analysisError) {
       setError(analysisError.message)
@@ -67,7 +72,7 @@ function VerifyPage({ txId }) {
 
   function startAnalysis() {
     setError('')
-    setPhase(analysis ? 'results' : 'analysing')
+    setPhase(analysis && !awaitingDecision(tx) ? 'results' : 'analysing')
   }
 
   function handleApprove(options) {

@@ -138,7 +138,7 @@ function ProfileMenu() {
         }
       >
         <p>
-          This restores the original sample transactions and three pending standing orders for this account. Your
+          This restores the original sample transactions and starts a new random batch of pending standing orders (1–100) for this account. Your
           login and bank details are kept.
         </p>
         {resetError && <p className="fa-field__error">{resetError}</p>}

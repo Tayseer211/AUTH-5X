@@ -95,7 +95,7 @@ function firstPaymentDate(rng, initiatedAt, dayOfMonth, timeZone) {
 }
 
 // A pending standing-order request in the app's transaction shape.
-function toRequest(spec, standingOrderId, rng, config) {
+export function toRequest(spec, standingOrderId, rng, config) {
   const reference = zonedParts(config.referenceDate, config.timeZone)
   const initiatedAt = zonedDate({ ...reference, day: reference.day + rng.int(0, config.requestWindowDays - 1), hour: spec.hour, minute: spec.minute }, config.timeZone)
   const date = firstPaymentDate(rng, initiatedAt, spec.dayOfMonth, config.timeZone)
@@ -179,11 +179,14 @@ function describeUser({ persona, history, profile }, config) {
   }
 }
 
-function createRecord(config, users, riskClass, index) {
-  const rng = createRng(`${config.seed}/record/${index}`)
-  const user = users[rng.int(0, users.length - 1)]
-  const ctx = { rng, persona: user.persona, profile: user.profile, history: user.history }
-
+// Picks a scenario of `riskClass` for the user in `ctx` ({ rng, persona,
+// profile, history }) and builds its request spec, with the drawn outcome for
+// suspicious requests and the incidental noise every class gets. Shared by the
+// dataset and by the app's demo batches (data/demoBatch.js) so both draw
+// requests the same way; the order of random draws is fixed, so a seed always
+// gives the same result.
+export function buildRequestSpec(ctx, riskClass, config) {
+  const { rng } = ctx
   const candidates = SCENARIOS.filter((scenario) => scenario.riskClass === riskClass && (!scenario.applicable || scenario.applicable(ctx)))
   const scenario = rng.weighted(candidates.map((candidate) => [candidate, candidate.weight]))
   const isFraud = riskClass === 'fraudulent' || (riskClass === 'suspicious' && rng.chance(config.suspiciousFraudShare))
@@ -192,6 +195,14 @@ function createRecord(config, users, riskClass, index) {
   if (riskClass === 'suspicious' && isFraud && rng.chance(0.5)) spec = escalate(ctx, spec)
   // Same rates for every class, from its own stream.
   spec = applyIncidentalNoise({ ...ctx, rng: rng.fork('noise') }, spec)
+  return { scenario, isFraud, spec }
+}
+
+function createRecord(config, users, riskClass, index) {
+  const rng = createRng(`${config.seed}/record/${index}`)
+  const user = users[rng.int(0, users.length - 1)]
+  const ctx = { rng, persona: user.persona, profile: user.profile, history: user.history }
+  const { scenario, isFraud, spec } = buildRequestSpec(ctx, riskClass, config)
 
   const standingOrderId = `SYN-SO-${String(index + 1).padStart(6, '0')}`
   const request = toRequest(spec, standingOrderId, rng, config)

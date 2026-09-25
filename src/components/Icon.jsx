@@ -77,6 +77,14 @@ const ICONS = {
       <path d="M5 4h11l-2 4 2 4H5" />
     </>
   ),
+  qr: (
+    <>
+      <rect x="4" y="4" width="6" height="6" rx="1" />
+      <rect x="14" y="4" width="6" height="6" rx="1" />
+      <rect x="4" y="14" width="6" height="6" rx="1" />
+      <path d="M14 14h3v3h-3zM19 19h1" />
+    </>
+  ),
   shield: <path d="M12 3 20 6v6c0 5-3.4 8.4-8 9.9C7.4 20.4 4 17 4 12V6l8-3Z" />,
   refresh: (
     <>
